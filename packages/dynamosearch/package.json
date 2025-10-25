@@ -1,0 +1,18 @@
+{
+  "name": "dynamosearch",
+  "version": "0.0.1",
+  "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./analyzers/*": "./src/analyzers/*",
+    "./tokenizers/*": "./src/tokenizers/*",
+    "./filters/*": "./src/filters/*"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.917.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.156",
+    "typescript": "^5.9.3"
+  }
+}
