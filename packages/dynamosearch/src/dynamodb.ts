@@ -15,7 +15,7 @@ const deleteTokens = async (client: DynamoDBClient, record: DynamoDBRecord, { in
   const items: Record<string, AttributeValue>[] = [];
   let exclusiveStartKey: Record<string, AttributeValue> | undefined = undefined;
   do {
-    const { Items, LastEvaluatedKey } = await client.send(new QueryCommand({
+    const { Items, LastEvaluatedKey }: { Items?: Record<string, AttributeValue>[]; LastEvaluatedKey?: Record<string, AttributeValue> } = await client.send(new QueryCommand({
       TableName: indexTableName,
       IndexName: INDEX_NAME,
       KeyConditionExpression: 'documentId = :id',

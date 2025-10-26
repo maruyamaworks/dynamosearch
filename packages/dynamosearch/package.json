@@ -9,11 +9,13 @@
     "./tokenizers/*": "./src/tokenizers/*",
     "./filters/*": "./src/filters/*"
   },
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.917.0"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.156",
-    "typescript": "^5.9.3"
+    "@types/aws-lambda": "^8.10.156"
   }
 }

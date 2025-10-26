@@ -2,7 +2,8 @@
   "compilerOptions": {
     "target": "ES2023",
     "strict": true,
-    "moduleResolution": "node",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
