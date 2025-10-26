@@ -18,3 +18,24 @@ test('KuromojiTokenizer', async () => {
     { text: '。' },
   ]);
 });
+
+test('KuromojiTokenizer', async () => {
+  const tokenizer = await KuromojiTokenizer.getInstance({ discardPunctuation: true });
+  const tokens = tokenizer.tokenize('Hello, World!');
+  expect(tokens).toMatchObject([
+    { text: 'Hello' },
+    { text: 'World' },
+  ]);
+});
+
+test('KuromojiTokenizer', async () => {
+  const tokenizer = await KuromojiTokenizer.getInstance({ discardPunctuation: false });
+  const tokens = tokenizer.tokenize('Hello, World!');
+  expect(tokens).toMatchObject([
+    { text: 'Hello' },
+    { text: ',' },
+    { text: ' ' },
+    { text: 'World' },
+    { text: '!' },
+  ]);
+});

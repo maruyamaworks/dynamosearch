@@ -66,7 +66,9 @@ const insertTokens = async (client: DynamoDBClient, record: DynamoDBRecord, { in
 }
 
 export const processRecords = async (records: DynamoDBRecord[], options: RecordProcessorOptions) => {
-  const client = new DynamoDBClient();
+  const client = new DynamoDBClient({
+    endpoint: process.env.NODE_ENV === 'test' ? 'http://localhost:8000' : undefined,
+  });
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
     switch (record.eventName) {

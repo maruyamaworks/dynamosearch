@@ -2,6 +2,7 @@
   "name": "dynamosearch",
   "version": "0.0.1",
   "main": "index.ts",
+  "type": "module",
   "exports": {
     ".": "./index.ts",
     "./analyzers/*": "./src/analyzers/*",

@@ -2,6 +2,7 @@
   "name": "@dynamosearch/plugin-analysis-kuromoji",
   "version": "0.0.1",
   "main": "index.ts",
+  "type": "module",
   "dependencies": {
     "dynamosearch": "workspace:^",
     "kuromoji": "0.1.2"
