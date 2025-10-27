@@ -1,5 +1,5 @@
-import { join } from 'node:path';
-import { builder as TokenizerBuilder,  type IpadicFeatures, type Tokenizer, type TokenizerBuilderOption } from 'kuromoji';
+import { fileURLToPath } from 'node:url';
+import kuromoji, { type IpadicFeatures, type Tokenizer, type TokenizerBuilderOption } from 'kuromoji';
 
 export interface KuromojiTokenizerOptions extends TokenizerBuilderOption {
   discardPunctuation: boolean;
@@ -24,8 +24,8 @@ class KuromojiTokenizer {
 
   static async getInstance(options?: Partial<KuromojiTokenizerOptions>) {
     return new Promise<KuromojiTokenizer>((resolve, reject) => {
-      const builder = TokenizerBuilder({
-        dicPath: options?.dicPath ?? join(__dirname, '../../node_modules/kuromoji/dict'),
+      const builder = kuromoji.builder({
+        dicPath: fileURLToPath(import.meta.resolve(options?.dicPath ?? '../../node_modules/kuromoji/dict')),
       });
       builder.build((err, tokenizer) => {
         if (err) {

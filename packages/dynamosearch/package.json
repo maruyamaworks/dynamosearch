@@ -1,13 +1,13 @@
 {
   "name": "dynamosearch",
   "version": "0.0.1",
-  "main": "index.ts",
+  "main": "dist/index.js",
   "type": "module",
   "exports": {
-    ".": "./index.ts",
-    "./analyzers/*": "./src/analyzers/*",
-    "./tokenizers/*": "./src/tokenizers/*",
-    "./filters/*": "./src/filters/*"
+    ".": "./dist/index.js",
+    "./analyzers/*": "./dist/analyzers/*",
+    "./tokenizers/*": "./dist/tokenizers/*",
+    "./filters/*": "./dist/filters/*"
   },
   "scripts": {
     "build": "tsc"

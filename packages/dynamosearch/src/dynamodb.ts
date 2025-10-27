@@ -42,7 +42,7 @@ const deleteTokens = async (client: DynamoDBClient, record: DynamoDBRecord, { in
 const insertTokens = async (client: DynamoDBClient, record: DynamoDBRecord, { indexTableName, attributes, keys }: RecordProcessorOptions) => {
   const tokens = new Map();
   for (let i = 0; i < attributes.length; i++) {
-    const result = attributes[i].analyzer.analyze(record.dynamodb!.NewImage![attributes[i].name].S!);
+    const result = attributes[i].analyzer.analyze(record.dynamodb!.NewImage![attributes[i].name].S ?? '');
     for (let i = 0; i < result.length; i++) {
       tokens.set(result[i].text, (tokens.get(result[i].text) ?? 0) + 1);
     }
