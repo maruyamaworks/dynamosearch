@@ -20,7 +20,10 @@ beforeAll(async () => {
       { AttributeName: 'token', AttributeType: 'S' },
       { AttributeName: 'documentId', AttributeType: 'N' },
     ],
-    KeySchema: [{ AttributeName: 'token', KeyType: 'HASH' }],
+    KeySchema: [
+      { AttributeName: 'token', KeyType: 'HASH' },
+      { AttributeName: 'documentId', KeyType: 'RANGE' },
+    ],
     GlobalSecondaryIndexes: [{
       IndexName: 'documentId-index',
       KeySchema: [{ AttributeName: 'documentId', KeyType: 'HASH' }],
