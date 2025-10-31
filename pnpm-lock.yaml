@@ -43,6 +43,9 @@ importers:
       '@types/kuromoji':
         specifier: ^0.1.3
         version: 0.1.3
+      hyparquet:
+        specifier: ^1.20.1
+        version: 1.20.1
 
 packages:
 
@@ -776,6 +779,9 @@ packages:
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
+
+  hyparquet@1.20.1:
+    resolution: {integrity: sha512-3A7cnSQDFcmbs+kljXNhXn0O2/8aNJgkS1Tjwd5jLEIaRxmjO+TtxNWAfl72ab4YjYMpxv1TPVjOTJsfNdaeDg==}
 
   istanbul-lib-coverage@3.2.2:
     resolution: {integrity: sha512-O8dpsF+r0WV/8MNRKfnmrtCWhuKjxrq2w+jpzBL5UZKTi2LeVWnWOmWRxFlesJONmc+wLAGvKQZEOanko0LFTg==}
@@ -1957,6 +1963,8 @@ snapshots:
   has-flag@4.0.0: {}
 
   html-escaper@2.0.2: {}
+
+  hyparquet@1.20.1: {}
 
   istanbul-lib-coverage@3.2.2: {}
 
