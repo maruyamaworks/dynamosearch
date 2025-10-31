@@ -1,37 +1,17 @@
 import { test, beforeAll } from 'vitest';
-import { DynamoDBClient, CreateTableCommand, DeleteTableCommand } from '@aws-sdk/client-dynamodb';
 import type { DynamoDBStreamEvent } from 'aws-lambda';
 import StandardAnalyzer from './analyzers/StandardAnalyzer.js';
-import { processRecords } from './dynamodb.js';
+import DynamoSearch from './index.js';
 
 beforeAll(async () => {
-  const client = new DynamoDBClient({
-    endpoint: 'http://localhost:8000',
+  const analyzer = await StandardAnalyzer.getInstance();
+  const dynamosearch = new DynamoSearch({
+    indexTableName: 'dynamosearch-test',
+    attributes: [{ name: 'Message', analyzer }],
+    keys: [{ name: 'Id', type: 'HASH' }],
   });
-  try {
-    await client.send(new DeleteTableCommand({
-      TableName: 'dynamosearch_test',
-    }));
-  } catch (e) {
-    //
-  }
-  await client.send(new CreateTableCommand({
-    TableName: 'dynamosearch_test',
-    AttributeDefinitions: [
-      { AttributeName: 'token', AttributeType: 'S' },
-      { AttributeName: 'documentId', AttributeType: 'N' },
-    ],
-    KeySchema: [
-      { AttributeName: 'token', KeyType: 'HASH' },
-      { AttributeName: 'documentId', KeyType: 'RANGE' },
-    ],
-    GlobalSecondaryIndexes: [{
-      IndexName: 'documentId-index',
-      KeySchema: [{ AttributeName: 'documentId', KeyType: 'HASH' }],
-      Projection: { ProjectionType: 'KEYS_ONLY' },
-    }],
-    BillingMode: 'PAY_PER_REQUEST',
-  }));
+  await dynamosearch.deleteIndexTable();
+  await dynamosearch.createIndexTable();
 });
 
 test('processRecords', async () => {
@@ -105,10 +85,11 @@ test('processRecords', async () => {
       */
     ],
   };
-  const standardAnalyzer = await StandardAnalyzer.getInstance();
-  await processRecords(event.Records, {
-    indexTableName: 'dynamosearch_test',
-    attributes: [{ name: 'Message', analyzer: standardAnalyzer }],
+  const analyzer = await StandardAnalyzer.getInstance();
+  const dynamosearch = new DynamoSearch({
+    indexTableName: 'dynamosearch-test',
+    attributes: [{ name: 'Message', analyzer }],
     keys: [{ name: 'Id', type: 'HASH' }],
   });
+  await dynamosearch.processRecords(event.Records);
 });

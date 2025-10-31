@@ -1,36 +1,19 @@
 import { test, expect, beforeAll } from 'vitest';
-import { DynamoDBClient, CreateTableCommand, DeleteTableCommand, BatchWriteItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, BatchWriteItemCommand } from '@aws-sdk/client-dynamodb';
 import StandardAnalyzer from './analyzers/StandardAnalyzer.js';
-import search from './search.js';
+import DynamoSearch from './index.js';
 
 beforeAll(async () => {
-  const client = new DynamoDBClient({
-    endpoint: 'http://localhost:8000',
+  const analyzer = await StandardAnalyzer.getInstance();
+  const dynamosearch = new DynamoSearch({
+    indexTableName: 'dynamosearch_test-search',
+    attributes: [{ name: 'Message', analyzer }],
+    keys: [{ name: 'Id', type: 'HASH' }],
   });
-  try {
-    await client.send(new DeleteTableCommand({
-      TableName: 'dynamosearch_test-search',
-    }));
-  } catch (e) {
-    //
-  }
-  await client.send(new CreateTableCommand({
-    TableName: 'dynamosearch_test-search',
-    AttributeDefinitions: [
-      { AttributeName: 'token', AttributeType: 'S' },
-      { AttributeName: 'documentId', AttributeType: 'N' },
-    ],
-    KeySchema: [
-      { AttributeName: 'token', KeyType: 'HASH' },
-      { AttributeName: 'documentId', KeyType: 'RANGE' },
-    ],
-    GlobalSecondaryIndexes: [{
-      IndexName: 'documentId-index',
-      KeySchema: [{ AttributeName: 'documentId', KeyType: 'HASH' }],
-      Projection: { ProjectionType: 'KEYS_ONLY' },
-    }],
-    BillingMode: 'PAY_PER_REQUEST',
-  }));
+  await dynamosearch.deleteIndexTable();
+  await dynamosearch.createIndexTable();
+
+  const client = new DynamoDBClient({ endpoint: 'http://localhost:8000' });
   await client.send(new BatchWriteItemCommand({
     RequestItems: {
       'dynamosearch_test-search': [
@@ -58,11 +41,13 @@ beforeAll(async () => {
 });
 
 test('search', async () => {
-  const standardAnalyzer = await StandardAnalyzer.getInstance();
-  const result = await search('New item!', {
+  const analyzer = await StandardAnalyzer.getInstance();
+  const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test-search',
-    analyzer: standardAnalyzer,
+    attributes: [{ name: 'Message', analyzer }],
+    keys: [{ name: 'Id', type: 'HASH' }],
   });
+  const result = await dynamosearch.search('New item!');
   expect(result).toEqual([
     {
       documentId: { N: '101' },
