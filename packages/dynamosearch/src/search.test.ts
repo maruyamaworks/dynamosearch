@@ -10,7 +10,7 @@ beforeAll(async () => {
     attributes: [{ name: 'Message', analyzer }],
     keys: [{ name: 'Id', type: 'HASH' }],
   });
-  await dynamosearch.deleteIndexTable();
+  await dynamosearch.deleteIndexTable({ ifExists: true });
   await dynamosearch.createIndexTable();
 
   const client = new DynamoDBClient({ endpoint: 'http://localhost:8000' });
@@ -21,8 +21,8 @@ beforeAll(async () => {
           PutRequest: {
             Item: {
               token: { S: 'new' },
-              documentId: { N: '101' },
-              occurrences: { N: '1' },
+              tfkeys: { S: '["0001",{"N":"101"}]' },
+              keys: { S: '[{"N":"101"}]' },
             },
           },
         },
@@ -30,8 +30,8 @@ beforeAll(async () => {
           PutRequest: {
             Item: {
               token: { S: 'item!' },
-              documentId: { N: '101' },
-              occurrences: { N: '1' },
+              tfkeys: { S: '["0001",{"N":"101"}]' },
+              keys: { S: '[{"N":"101"}]' },
             },
           },
         },
@@ -50,7 +50,9 @@ test('search', async () => {
   const result = await dynamosearch.search('New item!');
   expect(result).toEqual([
     {
-      documentId: { N: '101' },
+      keys: {
+        Id: { N: '101' },
+      },
       score: 2,
     },
   ]);

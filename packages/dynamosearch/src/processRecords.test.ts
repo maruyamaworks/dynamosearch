@@ -6,11 +6,11 @@ import DynamoSearch from './index.js';
 beforeAll(async () => {
   const analyzer = await StandardAnalyzer.getInstance();
   const dynamosearch = new DynamoSearch({
-    indexTableName: 'dynamosearch-test',
+    indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
     keys: [{ name: 'Id', type: 'HASH' }],
   });
-  await dynamosearch.deleteIndexTable();
+  await dynamosearch.deleteIndexTable({ ifExists: true });
   await dynamosearch.createIndexTable();
 });
 
@@ -87,7 +87,7 @@ test('processRecords', async () => {
   };
   const analyzer = await StandardAnalyzer.getInstance();
   const dynamosearch = new DynamoSearch({
-    indexTableName: 'dynamosearch-test',
+    indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
     keys: [{ name: 'Id', type: 'HASH' }],
   });

@@ -4,13 +4,15 @@ import {
   CreateTableCommand,
   DeleteTableCommand,
   QueryCommand,
+  ResourceInUseException,
+  ResourceNotFoundException,
   type AttributeValue,
 } from '@aws-sdk/client-dynamodb';
 import type { DynamoDBRecord } from 'aws-lambda';
 import type Analyzer from './analyzers/Analyzer.js';
 
 const BATCH_SIZE = 25;
-const INDEX_NAME = 'documentId-index';
+const INDEX_NAME = 'keys-index';
 
 export interface Attribute {
   name: string;
@@ -32,7 +34,8 @@ class DynamoSearch {
   client: DynamoDBClient;
   indexTableName: string;
   attributes: Attribute[];
-  keys: Key[];
+  partitionKeyName: string;
+  sortKeyName?: string;
 
   constructor(options: Options) {
     this.client = new DynamoDBClient({
@@ -40,37 +43,51 @@ class DynamoSearch {
     });
     this.indexTableName = options.indexTableName;
     this.attributes = options.attributes;
-    this.keys = options.keys;
+    this.partitionKeyName = options.keys.find(key => key.type === 'HASH')!.name;
+    this.sortKeyName = options.keys.find(key => key.type === 'RANGE')?.name;
   }
 
-  async createIndexTable() {
-    await this.client.send(new CreateTableCommand({
-      TableName: this.indexTableName,
-      AttributeDefinitions: [
-        { AttributeName: 'token', AttributeType: 'S' },
-        { AttributeName: 'documentId', AttributeType: 'N' },
-      ],
-      KeySchema: [
-        { AttributeName: 'token', KeyType: 'HASH' },
-        { AttributeName: 'documentId', KeyType: 'RANGE' },
-      ],
-      GlobalSecondaryIndexes: [{
-        IndexName: INDEX_NAME,
-        KeySchema: [{ AttributeName: 'documentId', KeyType: 'HASH' }],
-        Projection: { ProjectionType: 'KEYS_ONLY' },
-      }],
-      BillingMode: 'PAY_PER_REQUEST',
-    }));
+  async createIndexTable({ ifNotExists }: { ifNotExists?: boolean } = {}) {
+    try {
+      await this.client.send(new CreateTableCommand({
+        TableName: this.indexTableName,
+        AttributeDefinitions: [
+          { AttributeName: 'token', AttributeType: 'S' },
+          { AttributeName: 'tfkeys', AttributeType: 'S' },
+          { AttributeName: 'keys', AttributeType: 'S' },
+        ],
+        KeySchema: [
+          { AttributeName: 'token', KeyType: 'HASH' },
+          { AttributeName: 'tfkeys', KeyType: 'RANGE' },
+        ],
+        GlobalSecondaryIndexes: [{
+          IndexName: INDEX_NAME,
+          KeySchema: [{ AttributeName: 'keys', KeyType: 'HASH' }],
+          Projection: { ProjectionType: 'KEYS_ONLY' },
+        }],
+        BillingMode: 'PAY_PER_REQUEST',
+      }));
+    } catch (error) {
+      if (!(ifNotExists && error instanceof ResourceInUseException)) {
+        throw error;
+      }
+    }
   }
 
-  async deleteIndexTable() {
-    await this.client.send(new DeleteTableCommand({
-      TableName: this.indexTableName,
-    }));
+  async deleteIndexTable({ ifExists }: { ifExists?: boolean } = {}) {
+    try {
+      await this.client.send(new DeleteTableCommand({
+        TableName: this.indexTableName,
+      }));
+    } catch (error) {
+      if (!(ifExists && error instanceof ResourceNotFoundException)) {
+        throw error;
+      }
+    }
   }
 
   async insertTokens(record: DynamoDBRecord) {
-    const tokens = new Map();
+    const tokens = new Map<string, number>();
     for (let i = 0; i < this.attributes.length; i++) {
       const result = this.attributes[i].analyzer.analyze(record.dynamodb!.NewImage![this.attributes[i].name].S ?? '');
       for (let i = 0; i < result.length; i++) {
@@ -81,15 +98,19 @@ class DynamoSearch {
     for (let i = 0; i < entries.length; i += BATCH_SIZE) {
       await this.client.send(new BatchWriteItemCommand({
         RequestItems: {
-          [this.indexTableName]: entries.slice(i, i + BATCH_SIZE).map((entry) => ({
-            PutRequest: {
-              Item: {
-                token: { S: entry[0] },
-                documentId: record.dynamodb!.Keys![this.keys.find(key => key.type === 'HASH')!.name] as AttributeValue,
-                occurrences: { N: String(entry[1]) },
-              },
-            },
-          })),
+          [this.indexTableName]: entries.slice(i, i + BATCH_SIZE).map((entry) => {
+            const tf = Math.min(entry[1], 0xffff).toString(16).padStart(4, '0');
+            const keys = [
+              record.dynamodb!.Keys![this.partitionKeyName],
+              ...(this.sortKeyName ? [record.dynamodb!.Keys![this.sortKeyName]] : []),
+            ];
+            const item = {
+              token: { S: entry[0] },
+              tfkeys: { S: JSON.stringify([tf, ...keys]) },
+              keys: { S: JSON.stringify(keys) },
+            };
+            return { PutRequest: { Item: item } };
+          }),
         },
       }));
     }
@@ -102,9 +123,17 @@ class DynamoSearch {
       const { Items, LastEvaluatedKey }: { Items?: Record<string, AttributeValue>[]; LastEvaluatedKey?: Record<string, AttributeValue> } = await this.client.send(new QueryCommand({
         TableName: this.indexTableName,
         IndexName: INDEX_NAME,
-        KeyConditionExpression: 'documentId = :id',
+        KeyConditionExpression: '#keys = :keys',
+        ExpressionAttributeNames: {
+          '#keys': 'keys',
+        },
         ExpressionAttributeValues: {
-          ':id': record.dynamodb!.Keys![this.keys.find(key => key.type === 'HASH')!.name] as AttributeValue,
+          ':keys': {
+            S: JSON.stringify([
+              record.dynamodb!.Keys![this.partitionKeyName],
+              ...(this.sortKeyName ? [record.dynamodb!.Keys![this.sortKeyName]] : []),
+            ]),
+          },
         },
         ExclusiveStartKey: exclusiveStartKey,
       }));
@@ -151,6 +180,7 @@ class DynamoSearch {
       const command = new QueryCommand({
         TableName: this.indexTableName,
         KeyConditionExpression: '#token = :token',
+        ProjectionExpression: '#token, tfkeys',
         ExpressionAttributeNames: {
           '#token': 'token',
         },
@@ -162,12 +192,16 @@ class DynamoSearch {
       const { Items, ConsumedCapacity } = await this.client.send(command);
       console.log(ConsumedCapacity);
       Items?.forEach((item) => {
-        candidates.set(JSON.stringify(item.documentId), (candidates.get(JSON.stringify(item.documentId)) ?? 0) + Number(item.occurrences.N));
+        const [tf, ...keys] = JSON.parse(item.tfkeys.S!);
+        candidates.set(JSON.stringify(keys), (candidates.get(JSON.stringify(keys)) ?? 0) + parseInt(tf, 16));
       });
     }
 
     return [...candidates.entries()].map(([key, score]) => ({
-      documentId: JSON.parse(key),
+      keys: {
+        [this.partitionKeyName]: JSON.parse(key)[0],
+        ...(this.sortKeyName ? { [this.sortKeyName]: JSON.parse(key)[1] } : {}),
+      },
       score,
     }));
   }
