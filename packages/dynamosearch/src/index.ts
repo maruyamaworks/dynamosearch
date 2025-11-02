@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   DynamoDBClient,
   BatchWriteItemCommand,
@@ -12,7 +13,8 @@ import type { DynamoDBRecord } from 'aws-lambda';
 import type Analyzer from './analyzers/Analyzer.js';
 
 const BATCH_SIZE = 25;
-const INDEX_NAME = 'keys-index';
+const KEYS_INDEX_NAME = 'keys-index';
+const HASH_INDEX_NAME = 'hash-index';
 
 export interface Attribute {
   name: string;
@@ -55,14 +57,23 @@ class DynamoSearch {
           { AttributeName: 'token', AttributeType: 'S' },
           { AttributeName: 'tfkeys', AttributeType: 'S' },
           { AttributeName: 'keys', AttributeType: 'S' },
+          { AttributeName: 'hash', AttributeType: 'B' },
         ],
         KeySchema: [
           { AttributeName: 'token', KeyType: 'HASH' },
           { AttributeName: 'tfkeys', KeyType: 'RANGE' },
         ],
         GlobalSecondaryIndexes: [{
-          IndexName: INDEX_NAME,
+          IndexName: KEYS_INDEX_NAME,
           KeySchema: [{ AttributeName: 'keys', KeyType: 'HASH' }],
+          Projection: { ProjectionType: 'KEYS_ONLY' },
+        }],
+        LocalSecondaryIndexes: [{
+          IndexName: HASH_INDEX_NAME,
+          KeySchema: [
+            { AttributeName: 'token', KeyType: 'HASH' },
+            { AttributeName: 'hash', KeyType: 'RANGE' },
+          ],
           Projection: { ProjectionType: 'KEYS_ONLY' },
         }],
         BillingMode: 'PAY_PER_REQUEST',
@@ -108,6 +119,7 @@ class DynamoSearch {
               token: { S: entry[0] },
               tfkeys: { S: JSON.stringify([tf, ...keys]) },
               keys: { S: JSON.stringify(keys) },
+              hash: { B: createHash('md5').update(JSON.stringify(keys)).digest() },
             };
             return { PutRequest: { Item: item } };
           }),
@@ -122,7 +134,7 @@ class DynamoSearch {
     do {
       const { Items, LastEvaluatedKey }: { Items?: Record<string, AttributeValue>[]; LastEvaluatedKey?: Record<string, AttributeValue> } = await this.client.send(new QueryCommand({
         TableName: this.indexTableName,
-        IndexName: INDEX_NAME,
+        IndexName: KEYS_INDEX_NAME,
         KeyConditionExpression: '#keys = :keys',
         ExpressionAttributeNames: {
           '#keys': 'keys',
