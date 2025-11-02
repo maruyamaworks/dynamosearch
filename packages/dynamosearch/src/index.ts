@@ -211,8 +211,8 @@ class DynamoSearch {
 
     return [...candidates.entries()].map(([key, score]) => ({
       keys: {
-        [this.partitionKeyName]: JSON.parse(key)[0],
-        ...(this.sortKeyName ? { [this.sortKeyName]: JSON.parse(key)[1] } : {}),
+        [this.partitionKeyName]: JSON.parse(key)[0] as AttributeValue,
+        ...(this.sortKeyName ? { [this.sortKeyName]: JSON.parse(key)[1] as AttributeValue } : {}),
       },
       score,
     }));

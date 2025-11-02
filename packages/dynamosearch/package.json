@@ -6,6 +6,7 @@
   "exports": {
     ".": "./dist/index.js",
     "./analyzers/*": "./dist/analyzers/*",
+    "./char_filters/*": "./dist/char_filters/*",
     "./tokenizers/*": "./dist/tokenizers/*",
     "./filters/*": "./dist/filters/*"
   },

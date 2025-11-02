@@ -1,30 +1,39 @@
 import type Tokenizer from '../tokenizers/Tokenizer.js';
 
-type Filter = (tokens: { text: string }[]) => { text: string }[];
+export type CharacterFilter = (str: string) => string;
+export type TokenFilter = (tokens: { text: string }[]) => { text: string }[];
 
-interface AnalyzerOptions {
+export interface AnalyzerOptions {
   tokenizer: typeof Tokenizer;
-  filters: Filter[];
+  charFilters?: CharacterFilter[];
+  filters?: TokenFilter[];
 }
 
 class Analyzer {
   tokenizer: Tokenizer;
-  filters: Filter[];
+  charFilters: CharacterFilter[];
+  filters: TokenFilter[];
 
-  constructor({ tokenizer, filters }: { tokenizer: Tokenizer; filters: Filter[] }) {
+  constructor({ tokenizer, charFilters, filters }: { tokenizer: Tokenizer; charFilters?: CharacterFilter[]; filters?: TokenFilter[] }) {
     this.tokenizer = tokenizer;
-    this.filters = filters;
+    this.charFilters = charFilters ?? [];
+    this.filters = filters ?? [];
   }
 
   static async getInstance(options: AnalyzerOptions) {
     return new Analyzer({
       tokenizer: await options.tokenizer.getInstance(),
+      charFilters: options.charFilters,
       filters: options.filters,
     });
   }
 
   analyze(str: string) {
-    let tokens = this.tokenizer.tokenize(str);
+    let text = str;
+    for (let i = 0; i < this.charFilters.length; i++) {
+      text = this.charFilters[i](text);
+    }
+    let tokens = this.tokenizer.tokenize(text);
     for (let i = 0; i < this.filters.length; i++) {
       tokens = this.filters[i](tokens);
     }
