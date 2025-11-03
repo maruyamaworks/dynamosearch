@@ -20,7 +20,7 @@ beforeAll(async () => {
         {
           PutRequest: {
             Item: {
-              token: { S: 'new' },
+              token: { S: 'Message/new' },
               tfkeys: { S: '["0001",{"N":"101"}]' },
               keys: { S: '[{"N":"101"}]' },
               hash: { B: Buffer.from('4f8d90f01753c40e0f7e1ac2e61034da', 'hex') },
@@ -30,7 +30,7 @@ beforeAll(async () => {
         {
           PutRequest: {
             Item: {
-              token: { S: 'item!' },
+              token: { S: 'Message/item!' },
               tfkeys: { S: '["0001",{"N":"101"}]' },
               keys: { S: '[{"N":"101"}]' },
               hash: { B: Buffer.from('4f8d90f01753c40e0f7e1ac2e61034da', 'hex') },
