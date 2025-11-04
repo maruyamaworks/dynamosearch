@@ -105,14 +105,14 @@ class DynamoSearch {
       const tokens = new Map<string, number>();
       const result = this.attributes[i].analyzer.analyze(record.dynamodb!.NewImage![this.attributes[i].name].S ?? '');
       resultMap.set(this.attributes[i].name, result.length);
-      for (let i = 0; i < result.length; i++) {
-        tokens.set(result[i].text, (tokens.get(result[i].text) ?? 0) + 1);
+      for (let j = 0; j < result.length; j++) {
+        tokens.set(result[j].text, (tokens.get(result[j].text) ?? 0) + 1);
       }
       const entries = [...tokens.entries()];
-      for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      for (let j = 0; j < entries.length; j += BATCH_SIZE) {
         await this.client.send(new BatchWriteItemCommand({
           RequestItems: {
-            [this.indexTableName]: entries.slice(i, i + BATCH_SIZE).map((entry) => {
+            [this.indexTableName]: entries.slice(j, j + BATCH_SIZE).map((entry) => {
               const occurrence = Math.min(entry[1], 0xffff).toString(16).padStart(4, '0');
               const tokenCount = Math.min(result.length, 0xffffffff).toString(16).padStart(8, '0');
               const keys = [
