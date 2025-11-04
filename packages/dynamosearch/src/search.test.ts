@@ -20,8 +20,18 @@ beforeAll(async () => {
         {
           PutRequest: {
             Item: {
+              token: { S: '#metadata' },
+              tfkeys: { S: '[]' },
+              doc_count: { N: '1' },
+              'token_count:Message': { N: '2' },
+            },
+          },
+        },
+        {
+          PutRequest: {
+            Item: {
               token: { S: 'Message/new' },
-              tfkeys: { S: '["0001",{"N":"101"}]' },
+              tfkeys: { S: '["0001","0002",{"N":"101"}]' },
               keys: { S: '[{"N":"101"}]' },
               hash: { B: Buffer.from('4f8d90f01753c40e0f7e1ac2e61034da', 'hex') },
             },
@@ -31,7 +41,7 @@ beforeAll(async () => {
           PutRequest: {
             Item: {
               token: { S: 'Message/item!' },
-              tfkeys: { S: '["0001",{"N":"101"}]' },
+              tfkeys: { S: '["0001","0002",{"N":"101"}]' },
               keys: { S: '[{"N":"101"}]' },
               hash: { B: Buffer.from('4f8d90f01753c40e0f7e1ac2e61034da', 'hex') },
             },
@@ -49,13 +59,13 @@ test('search', async () => {
     attributes: [{ name: 'Message', analyzer }],
     keys: [{ name: 'Id', type: 'HASH' }],
   });
-  const result = await dynamosearch.search('New item!');
-  expect(result).toEqual([
+  const { items } = await dynamosearch.search('New item!');
+  expect(items).toEqual([
     {
       keys: {
         Id: { N: '101' },
       },
-      score: 2,
+      score: expect.closeTo(0.575),
     },
   ]);
 });
