@@ -1,6 +1,6 @@
 {
   "name": "dynamosearch",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "main": "dist/index.js",
   "type": "module",
   "exports": {
@@ -9,6 +9,11 @@
     "./char_filters/*": "./dist/char_filters/*",
     "./tokenizers/*": "./dist/tokenizers/*",
     "./filters/*": "./dist/filters/*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maruyamaworks/dynamosearch.git",
+    "directory": "packages/dynamosearch"
   },
   "scripts": {
     "build": "tsc"
