@@ -35,6 +35,18 @@ export interface Options {
   keys: Key[];
 }
 
+export interface SearchOptions {
+  attributes?: string[];
+  maxItems?: number;
+  minScore?: number;
+  bm25?: BM25Params;
+}
+
+export interface BM25Params {
+  k1?: number;
+  b?: number;
+}
+
 class DynamoSearch {
   client: DynamoDBClient;
   indexTableName: string;
@@ -104,7 +116,7 @@ class DynamoSearch {
     for (let i = 0; i < this.attributes.length; i++) {
       const tokens = new Map<string, number>();
       const result = this.attributes[i].analyzer.analyze(record.dynamodb!.NewImage![this.attributes[i].name].S ?? '');
-      resultMap.set(this.attributes[i].name, result.length);
+      resultMap.set(this.attributes[i].name, (resultMap.get(this.attributes[i].name) ?? 0) + result.length);
       for (let j = 0; j < result.length; j++) {
         tokens.set(result[j].text, (tokens.get(result[j].text) ?? 0) + 1);
       }
@@ -246,8 +258,8 @@ class DynamoSearch {
     await this.updateMetadata({ count, resultMap });
   }
 
-  async search(query: string, options: { attributes?: string[]; bm25params?: { k1?: number; b?: number } } = {}) {
-    const attributes = options.attributes?.map((attributeName) => {
+  async search(query: string, { attributes, maxItems = 100, minScore = 0, bm25: { k1 = 1.2, b = 0.75 } = {} }: SearchOptions = {}) {
+    const _attributes = attributes?.map((attributeName) => {
       const attribute = this.attributes.find(({ name }) => name === attributeName.split('^')[0]);
       const boost = parseFloat(attributeName.split('^')[1] || '1');
       if (!attribute) {
@@ -256,14 +268,11 @@ class DynamoSearch {
       return { ...attribute, boost };
     }) ?? this.attributes;
 
-    const k1 = options.bm25params?.k1 ?? 1.2;
-    const b = options.bm25params?.b ?? 0.75;
-
     let consumedCapacity = 0;
-    const { docCount, tokenCount } = await this.getMetadata();
+    const { docCount, tokenCount: tokenCountMap } = await this.getMetadata();
     const candidates = new Map<string, number>();
-    for (let i = 0; i < attributes.length; i++) {
-      const tokens = attributes[i].analyzer.analyze(query);
+    for (let i = 0; i < _attributes.length; i++) {
+      const tokens = _attributes[i].analyzer.analyze(query);
       const words = [...new Set(tokens.map(token => token.text))];
       for (let j = 0; j < words.length; j++) {
         const command = new QueryCommand({
@@ -274,7 +283,7 @@ class DynamoSearch {
             '#token': 'token',
           },
           ExpressionAttributeValues: {
-            ':token': { S: `${attributes[i].name}/${words[j]}` },
+            ':token': { S: `${_attributes[i].name}/${words[j]}` },
           },
           ReturnConsumedCapacity: 'TOTAL',
         });
@@ -283,12 +292,12 @@ class DynamoSearch {
         if (Items) {
           const idf = Math.log(1 + (docCount - Items.length + 0.5) / (Items.length + 0.5));
           Items.forEach((item) => {
-            const [occurrenceHex, fieldLenHex, ...keys] = JSON.parse(item.tfkeys.S!);
+            const [occurrenceHex, tokenCountHex, ...keys] = JSON.parse(item.tfkeys.S!);
             const occurrence = parseInt(occurrenceHex, 16);
-            const fieldLen = parseInt(fieldLenHex, 16);
-            const avgFieldLen = tokenCount.get(attributes[i].name)! / docCount;
-            const tf = occurrence / (occurrence + k1 * (1 - b + b * (fieldLen / avgFieldLen)));
-            const score = (attributes[i].boost ?? 1) * tf * idf * (k1 + 1);
+            const tokenCount = parseInt(tokenCountHex, 16);
+            const averageTokenCount = tokenCountMap.get(_attributes[i].name)! / docCount;
+            const tf = occurrence / (occurrence + k1 * (1 - b + b * (tokenCount / averageTokenCount)));
+            const score = (_attributes[i].boost ?? 1) * tf * idf * (k1 + 1);
             candidates.set(JSON.stringify(keys), (candidates.get(JSON.stringify(keys)) ?? 0) + score);
           });
         }
@@ -296,14 +305,21 @@ class DynamoSearch {
     }
 
     return {
-      items: [...candidates.entries()].map(([key, score]) => ({
-        keys: {
-          [this.partitionKeyName]: JSON.parse(key)[0] as AttributeValue,
-          ...(this.sortKeyName ? { [this.sortKeyName]: JSON.parse(key)[1] as AttributeValue } : {}),
-        },
-        score,
-      })),
-      consumedCapacity,
+      items: [...candidates.entries()]
+        .filter(([, score]) => score >= minScore)
+        .sort(([, score_A], [, score_B]) => score_B - score_A)
+        .slice(0, maxItems)
+        .map(([key, score]) => ({
+          keys: {
+            [this.partitionKeyName]: JSON.parse(key)[0] as AttributeValue,
+            ...(this.sortKeyName ? { [this.sortKeyName]: JSON.parse(key)[1] as AttributeValue } : {}),
+          },
+          score,
+        })),
+      consumedCapacity: {
+        capacityUnits: consumedCapacity,
+        tableName: this.indexTableName,
+      },
     };
   }
 }
