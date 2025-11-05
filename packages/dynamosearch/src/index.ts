@@ -286,6 +286,7 @@ class DynamoSearch {
             ':token': { S: `${_attributes[i].name}/${words[j]}` },
           },
           ReturnConsumedCapacity: 'TOTAL',
+          ScanIndexForward: false,
         });
         const { Items, ConsumedCapacity } = await this.client.send(command);
         consumedCapacity += ConsumedCapacity?.CapacityUnits ?? 0;
