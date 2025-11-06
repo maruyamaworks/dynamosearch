@@ -25,7 +25,7 @@ class KuromojiTokenizer {
   static async getInstance(options?: Partial<KuromojiTokenizerOptions>) {
     return new Promise<KuromojiTokenizer>((resolve, reject) => {
       const builder = kuromoji.builder({
-        dicPath: fileURLToPath(import.meta.resolve(options?.dicPath ?? '../../node_modules/kuromoji/dict')),
+        dicPath: fileURLToPath(import.meta.resolve(options?.dicPath ?? 'kuromoji/dict')),
       });
       builder.build((err, tokenizer) => {
         if (err) {
