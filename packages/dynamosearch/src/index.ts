@@ -177,7 +177,7 @@ class DynamoSearch {
                 [ATTR_PK]: { S: `${this.attributes[i].shortName || this.attributes[i].name};${entry[0]}` },
                 [ATTR_SK]: { S: `${occurrence}${tokenCount};${encodedKeys}` },
                 [ATTR_KEYS]: { S: encodedKeys },
-                [ATTR_HASH]: { B: createHash('md5').update(encodedKeys).digest() },
+                [ATTR_HASH]: { B: createHash('md5').update(encodedKeys).digest().subarray(0, 1) },
               };
               return { PutRequest: { Item: item } };
             }),
@@ -201,7 +201,10 @@ class DynamoSearch {
         TableName: this.indexTableName,
         IndexName: INDEX_KEYS,
         KeyConditionExpression: '#keys = :keys',
+        ProjectionExpression: '#pk, #sk',
         ExpressionAttributeNames: {
+          '#pk': ATTR_PK,
+          '#sk': ATTR_SK,
           '#keys': ATTR_KEYS,
         },
         ExpressionAttributeValues: {
@@ -318,7 +321,7 @@ class DynamoSearch {
         const command = new QueryCommand({
           TableName: this.indexTableName,
           KeyConditionExpression: '#pk = :pk',
-          ProjectionExpression: '#pk, #sk',
+          ProjectionExpression: '#sk',
           ExpressionAttributeNames: {
             '#pk': ATTR_PK,
             '#sk': ATTR_SK,
