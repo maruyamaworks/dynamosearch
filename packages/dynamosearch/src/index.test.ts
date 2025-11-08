@@ -101,12 +101,12 @@ test('search', async () => {
   });
   await client.send(new BatchWriteItemCommand({
     RequestItems: {
-      'dynamosearch_test-search': [
+      'dynamosearch_test': [
         {
           PutRequest: {
             Item: {
-              token: { S: '#metadata' },
-              tfkeys: { S: '[]' },
+              pk: { S: '#metadata' },
+              sk: { S: '_' },
               doc_count: { N: '1' },
               'token_count:Message': { N: '2' },
             },
@@ -115,20 +115,20 @@ test('search', async () => {
         {
           PutRequest: {
             Item: {
-              token: { S: 'Message/new' },
-              tfkeys: { S: '["0001","0002",{"N":"101"}]' },
-              keys: { S: '[{"N":"101"}]' },
-              hash: { B: Buffer.from('4f8d90f01753c40e0f7e1ac2e61034da', 'hex') },
+              pk: { S: 'Message;new' },
+              sk: { S: '000100000002;N101' },
+              keys: { S: 'N101' },
+              hash: { B: Buffer.from('e8f4b1baa358599f45e6efde615ec9db', 'hex') },
             },
           },
         },
         {
           PutRequest: {
             Item: {
-              token: { S: 'Message/item!' },
-              tfkeys: { S: '["0001","0002",{"N":"101"}]' },
-              keys: { S: '[{"N":"101"}]' },
-              hash: { B: Buffer.from('4f8d90f01753c40e0f7e1ac2e61034da', 'hex') },
+              pk: { S: 'Message;item!' },
+              sk: { S: '000100000002;N101' },
+              keys: { S: 'N101' },
+              hash: { B: Buffer.from('e8f4b1baa358599f45e6efde615ec9db', 'hex') },
             },
           },
         },

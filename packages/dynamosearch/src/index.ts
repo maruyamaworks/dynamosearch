@@ -21,6 +21,7 @@ const HASH_INDEX_NAME = 'hash-index';
 export interface Attribute {
   name: string;
   analyzer: Analyzer;
+  shortName?: string;
   boost?: number;
 }
 
@@ -47,6 +48,38 @@ export interface BM25Params {
   b?: number;
 }
 
+const encodeKeys = (keys: Record<string, any>[], { delimiter = ';', escape = '\\' } = {}) => {
+  let str = '';
+  for (let i = 0; i < keys.length; i++) {
+    str += Object.keys(keys[i])[0];
+    str += Object.values(keys[i])[0].replaceAll(escape, `${escape}${escape}`).replaceAll(delimiter, `${escape}${delimiter}`);
+    if (i < keys.length - 1) str += delimiter;
+  }
+  return str;
+};
+
+const decodeKeys = (str: string, { delimiter = ';', escape = '\\' } = {}) => {
+  const keys: string[] = [];
+  let i = 0, current = '';
+  while (i < str.length) {
+    const char = str[i];
+    if (char === escape && i < str.length - 1) {
+      current += str[i + 1];
+      i += 2;
+    } else if (char === delimiter) {
+      keys.push(current);
+      current = '';
+      i++;
+    } else {
+      current += char;
+      i++;
+    }
+  }
+  keys.push(current);
+
+  return keys.map(key => ({ [key.slice(0, 1)]: key.slice(1) } as Record<string, any>));
+};
+
 class DynamoSearch {
   client: DynamoDBClient;
   indexTableName: string;
@@ -69,14 +102,14 @@ class DynamoSearch {
       await this.client.send(new CreateTableCommand({
         TableName: this.indexTableName,
         AttributeDefinitions: [
-          { AttributeName: 'token', AttributeType: 'S' },
-          { AttributeName: 'tfkeys', AttributeType: 'S' },
+          { AttributeName: 'pk', AttributeType: 'S' },
+          { AttributeName: 'sk', AttributeType: 'S' },
           { AttributeName: 'keys', AttributeType: 'S' },
           { AttributeName: 'hash', AttributeType: 'B' },
         ],
         KeySchema: [
-          { AttributeName: 'token', KeyType: 'HASH' },
-          { AttributeName: 'tfkeys', KeyType: 'RANGE' },
+          { AttributeName: 'pk', KeyType: 'HASH' },
+          { AttributeName: 'sk', KeyType: 'RANGE' },
         ],
         GlobalSecondaryIndexes: [{
           IndexName: KEYS_INDEX_NAME,
@@ -86,7 +119,7 @@ class DynamoSearch {
         LocalSecondaryIndexes: [{
           IndexName: HASH_INDEX_NAME,
           KeySchema: [
-            { AttributeName: 'token', KeyType: 'HASH' },
+            { AttributeName: 'pk', KeyType: 'HASH' },
             { AttributeName: 'hash', KeyType: 'RANGE' },
           ],
           Projection: { ProjectionType: 'KEYS_ONLY' },
@@ -127,15 +160,15 @@ class DynamoSearch {
             [this.indexTableName]: entries.slice(j, j + BATCH_SIZE).map((entry) => {
               const occurrence = Math.min(entry[1], 0xffff).toString(16).padStart(4, '0');
               const tokenCount = Math.min(result.length, 0xffffffff).toString(16).padStart(8, '0');
-              const keys = [
+              const encodedKeys = encodeKeys([
                 record.dynamodb!.Keys![this.partitionKeyName],
                 ...(this.sortKeyName ? [record.dynamodb!.Keys![this.sortKeyName]] : []),
-              ];
+              ]);
               const item = {
-                token: { S: `${this.attributes[i].name}/${entry[0]}` },
-                tfkeys: { S: JSON.stringify([occurrence, tokenCount, ...keys]) },
-                keys: { S: JSON.stringify(keys) },
-                hash: { B: createHash('md5').update(JSON.stringify(keys)).digest() },
+                pk: { S: `${this.attributes[i].shortName || this.attributes[i].name};${entry[0]}` },
+                sk: { S: `${occurrence}${tokenCount};${encodedKeys}` },
+                keys: { S: encodedKeys },
+                hash: { B: createHash('md5').update(encodedKeys).digest() },
               };
               return { PutRequest: { Item: item } };
             }),
@@ -151,6 +184,10 @@ class DynamoSearch {
     const items: Record<string, AttributeValue>[] = [];
     let exclusiveStartKey: Record<string, AttributeValue> | undefined = undefined;
     do {
+      const encodedKeys = encodeKeys([
+        record.dynamodb!.Keys![this.partitionKeyName],
+        ...(this.sortKeyName ? [record.dynamodb!.Keys![this.sortKeyName]] : []),
+      ]);
       const { Items, LastEvaluatedKey }: { Items?: Record<string, AttributeValue>[]; LastEvaluatedKey?: Record<string, AttributeValue> } = await this.client.send(new QueryCommand({
         TableName: this.indexTableName,
         IndexName: KEYS_INDEX_NAME,
@@ -159,12 +196,7 @@ class DynamoSearch {
           '#keys': 'keys',
         },
         ExpressionAttributeValues: {
-          ':keys': {
-            S: JSON.stringify([
-              record.dynamodb!.Keys![this.partitionKeyName],
-              ...(this.sortKeyName ? [record.dynamodb!.Keys![this.sortKeyName]] : []),
-            ]),
-          },
+          ':keys': { S: encodedKeys },
         },
         ExclusiveStartKey: exclusiveStartKey,
       }));
@@ -173,10 +205,14 @@ class DynamoSearch {
     } while (exclusiveStartKey);
 
     for (let i = 0; i < items.length; i++) {
-      const [attributeName] = items[i].token.S!.split('/');
-      const [occurrenceHex] = JSON.parse(items[i].tfkeys.S!);
-      const occurrence = parseInt(occurrenceHex, 16);
-      resultMap.set(attributeName, (resultMap.get(attributeName) ?? 0) - occurrence);
+      let [attributeName]: (string | undefined)[] = items[i].pk.S!.split(';');
+      if (this.attributes.some(({ name }) => name === attributeName)) {
+        attributeName = this.attributes.find(({ shortName }) => shortName === attributeName)?.name;
+      }
+      if (attributeName) {
+        const occurrence = parseInt(items[i].sk.S!.slice(0, 4), 16);
+        resultMap.set(attributeName, (resultMap.get(attributeName) ?? 0) - occurrence);
+      }
     }
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
       await this.client.send(new BatchWriteItemCommand({
@@ -194,10 +230,7 @@ class DynamoSearch {
   async getMetadata() {
     const { Item } = await this.client.send(new GetItemCommand({
       TableName: this.indexTableName,
-      Key: {
-        token: { S: '#metadata' },
-        tfkeys: { S: '[]' },
-      },
+      Key: { pk: { S: '#metadata' }, sk: { S: '_' } },
     }));
 
     return {
@@ -223,10 +256,7 @@ class DynamoSearch {
     });
     await this.client.send(new UpdateItemCommand({
       TableName: this.indexTableName,
-      Key: {
-        token: { S: '#metadata' },
-        tfkeys: { S: '[]' },
-      },
+      Key: { pk: { S: '#metadata' }, sk: { S: '_' } },
       UpdateExpression: `SET ${updateExpressions.join(', ')}`,
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
@@ -277,13 +307,10 @@ class DynamoSearch {
       for (let j = 0; j < words.length; j++) {
         const command = new QueryCommand({
           TableName: this.indexTableName,
-          KeyConditionExpression: '#token = :token',
-          ProjectionExpression: '#token, tfkeys',
-          ExpressionAttributeNames: {
-            '#token': 'token',
-          },
+          KeyConditionExpression: 'pk = :pk',
+          ProjectionExpression: 'pk, sk',
           ExpressionAttributeValues: {
-            ':token': { S: `${_attributes[i].name}/${words[j]}` },
+            ':pk': { S: `${_attributes[i].shortName || _attributes[i].name};${words[j]}` },
           },
           ReturnConsumedCapacity: 'TOTAL',
           ScanIndexForward: false,
@@ -293,13 +320,13 @@ class DynamoSearch {
         if (Items) {
           const idf = Math.log(1 + (docCount - Items.length + 0.5) / (Items.length + 0.5));
           Items.forEach((item) => {
-            const [occurrenceHex, tokenCountHex, ...keys] = JSON.parse(item.tfkeys.S!);
-            const occurrence = parseInt(occurrenceHex, 16);
-            const tokenCount = parseInt(tokenCountHex, 16);
+            const occurrence = parseInt(item.sk.S!.slice(0, 4), 16);
+            const tokenCount = parseInt(item.sk.S!.slice(4, 12), 16);
+            const encodedKeys = item.sk.S!.slice(13);
             const averageTokenCount = tokenCountMap.get(_attributes[i].name)! / docCount;
             const tf = occurrence / (occurrence + k1 * (1 - b + b * (tokenCount / averageTokenCount)));
             const score = (_attributes[i].boost ?? 1) * tf * idf * (k1 + 1);
-            candidates.set(JSON.stringify(keys), (candidates.get(JSON.stringify(keys)) ?? 0) + score);
+            candidates.set(encodedKeys, (candidates.get(encodedKeys) ?? 0) + score);
           });
         }
       }
@@ -312,8 +339,8 @@ class DynamoSearch {
         .slice(0, maxItems)
         .map(([key, score]) => ({
           keys: {
-            [this.partitionKeyName]: JSON.parse(key)[0] as AttributeValue,
-            ...(this.sortKeyName ? { [this.sortKeyName]: JSON.parse(key)[1] as AttributeValue } : {}),
+            [this.partitionKeyName]: decodeKeys(key)[0] as AttributeValue,
+            ...(this.sortKeyName ? { [this.sortKeyName]: decodeKeys(key)[1] as AttributeValue } : {}),
           },
           score,
         })),
