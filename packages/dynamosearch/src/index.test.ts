@@ -105,30 +105,30 @@ test('search', async () => {
         {
           PutRequest: {
             Item: {
-              pk: { S: '#metadata' },
-              sk: { S: '_' },
-              doc_count: { N: '1' },
-              'token_count:Message': { N: '2' },
+              p: { S: '_' },
+              s: { S: '_' },
+              dc: { N: '1' },
+              'tc:Message': { N: '2' },
             },
           },
         },
         {
           PutRequest: {
             Item: {
-              pk: { S: 'Message;new' },
-              sk: { S: '000100000002;N101' },
-              keys: { S: 'N101' },
-              hash: { B: Buffer.from('e8f4b1baa358599f45e6efde615ec9db', 'hex') },
+              p: { S: 'Message;new' },
+              s: { S: '000100000002;N101' },
+              k: { S: 'N101' },
+              h: { B: Buffer.from('e8f4b1baa358599f45e6efde615ec9db', 'hex') },
             },
           },
         },
         {
           PutRequest: {
             Item: {
-              pk: { S: 'Message;item!' },
-              sk: { S: '000100000002;N101' },
-              keys: { S: 'N101' },
-              hash: { B: Buffer.from('e8f4b1baa358599f45e6efde615ec9db', 'hex') },
+              p: { S: 'Message;item!' },
+              s: { S: '000100000002;N101' },
+              k: { S: 'N101' },
+              h: { B: Buffer.from('e8f4b1baa358599f45e6efde615ec9db', 'hex') },
             },
           },
         },
