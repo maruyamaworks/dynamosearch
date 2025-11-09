@@ -106,7 +106,7 @@ test('search', async () => {
           PutRequest: {
             Item: {
               p: { S: '_' },
-              s: { S: '_' },
+              s: { B: new Uint8Array([0]) },
               dc: { N: '1' },
               'tc:Message': { N: '2' },
             },
@@ -116,9 +116,9 @@ test('search', async () => {
           PutRequest: {
             Item: {
               p: { S: 'Message;new' },
-              s: { S: '000100000002;N101' },
+              s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
               k: { S: 'N101' },
-              h: { B: Buffer.from('e8f4b1baa358599f45e6efde615ec9db', 'hex') },
+              h: { B: new Uint8Array([232]) },
             },
           },
         },
@@ -126,9 +126,9 @@ test('search', async () => {
           PutRequest: {
             Item: {
               p: { S: 'Message;item!' },
-              s: { S: '000100000002;N101' },
+              s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
               k: { S: 'N101' },
-              h: { B: Buffer.from('e8f4b1baa358599f45e6efde615ec9db', 'hex') },
+              h: { B: new Uint8Array([232]) },
             },
           },
         },

@@ -112,7 +112,7 @@ class DynamoSearch {
         TableName: this.indexTableName,
         AttributeDefinitions: [
           { AttributeName: ATTR_PK, AttributeType: 'S' },
-          { AttributeName: ATTR_SK, AttributeType: 'S' },
+          { AttributeName: ATTR_SK, AttributeType: 'B' },
           { AttributeName: ATTR_KEYS, AttributeType: 'S' },
           { AttributeName: ATTR_HASH, AttributeType: 'B' },
         ],
@@ -166,18 +166,21 @@ class DynamoSearch {
       for (let j = 0; j < entries.length; j += BATCH_SIZE) {
         await this.client.send(new BatchWriteItemCommand({
           RequestItems: {
-            [this.indexTableName]: entries.slice(j, j + BATCH_SIZE).map((entry) => {
-              const occurrence = Math.min(entry[1], 0xffff).toString(16).padStart(4, '0');
-              const tokenCount = Math.min(result.length, 0xffffffff).toString(16).padStart(8, '0');
+            [this.indexTableName]: entries.slice(j, j + BATCH_SIZE).map(([token, occurrence]) => {
               const encodedKeys = encodeKeys([
                 record.dynamodb!.Keys![this.partitionKeyName],
                 ...(this.sortKeyName ? [record.dynamodb!.Keys![this.sortKeyName]] : []),
               ]);
+              const hash = createHash('md5').update(encodedKeys).digest();
+              const buffer = Buffer.allocUnsafe(14);
+              buffer.writeUInt16BE(Math.min(2 ** 16 - 1, occurrence), 0);
+              buffer.writeUInt32BE(Math.min(2 ** 32 - 1, result.length), 2);
+              hash.copy(buffer, 6, 0, 8);
               const item = {
-                [ATTR_PK]: { S: `${this.attributes[i].shortName || this.attributes[i].name};${entry[0]}` },
-                [ATTR_SK]: { S: `${occurrence}${tokenCount};${encodedKeys}` },
+                [ATTR_PK]: { S: `${this.attributes[i].shortName || this.attributes[i].name};${token}` },
+                [ATTR_SK]: { B: buffer },
                 [ATTR_KEYS]: { S: encodedKeys },
-                [ATTR_HASH]: { B: createHash('md5').update(encodedKeys).digest().subarray(0, 1) },
+                [ATTR_HASH]: { B: hash.subarray(0, 1) },
               };
               return { PutRequest: { Item: item } };
             }),
@@ -219,7 +222,7 @@ class DynamoSearch {
     for (let i = 0; i < items.length; i++) {
       const [shortName]: (string | undefined)[] = items[i][ATTR_PK].S!.split(';');
       const attributeName = this.attributes.find(attr => attr.shortName === shortName)?.name ?? shortName;
-      const occurrence = parseInt(items[i][ATTR_SK].S!.slice(0, 4), 16);
+      const occurrence = Buffer.from(items[i][ATTR_SK].B!).readUInt16BE(0);
       resultMap.set(attributeName, (resultMap.get(attributeName) ?? 0) - occurrence);
     }
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
@@ -238,7 +241,7 @@ class DynamoSearch {
   async getMetadata() {
     const { Item } = await this.client.send(new GetItemCommand({
       TableName: this.indexTableName,
-      Key: { [ATTR_PK]: { S: '_' }, [ATTR_SK]: { S: '_' } },
+      Key: { [ATTR_PK]: { S: '_' }, [ATTR_SK]: { B: Buffer.alloc(1) } },
     }));
 
     return {
@@ -269,7 +272,7 @@ class DynamoSearch {
     });
     await this.client.send(new UpdateItemCommand({
       TableName: this.indexTableName,
-      Key: { [ATTR_PK]: { S: '_' }, [ATTR_SK]: { S: '_' } },
+      Key: { [ATTR_PK]: { S: '_' }, [ATTR_SK]: { B: Buffer.alloc(1) } },
       UpdateExpression: `SET ${updateExpressions.join(', ')}`,
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
@@ -321,10 +324,11 @@ class DynamoSearch {
         const command = new QueryCommand({
           TableName: this.indexTableName,
           KeyConditionExpression: '#pk = :pk',
-          ProjectionExpression: '#sk',
+          ProjectionExpression: '#sk, #keys',
           ExpressionAttributeNames: {
             '#pk': ATTR_PK,
             '#sk': ATTR_SK,
+            '#keys': ATTR_KEYS,
           },
           ExpressionAttributeValues: {
             ':pk': { S: `${_attributes[i].shortName || _attributes[i].name};${words[j]}` },
@@ -337,9 +341,9 @@ class DynamoSearch {
         if (Items) {
           const idf = Math.log(1 + (docCount - Items.length + 0.5) / (Items.length + 0.5));
           Items.forEach((item) => {
-            const occurrence = parseInt(item[ATTR_SK].S!.slice(0, 4), 16);
-            const tokenCount = parseInt(item[ATTR_SK].S!.slice(4, 12), 16);
-            const encodedKeys = item[ATTR_SK].S!.slice(13);
+            const occurrence = Buffer.from(item[ATTR_SK].B!).readUInt16BE(0);
+            const tokenCount = Buffer.from(item[ATTR_SK].B!).readUInt32BE(2);
+            const encodedKeys = item[ATTR_KEYS].S!;
             const averageTokenCount = tokenCountMap.get(_attributes[i].name)! / docCount;
             const tf = occurrence / (occurrence + k1 * (1 - b + b * (tokenCount / averageTokenCount)));
             const score = (_attributes[i].boost ?? 1) * tf * idf * (k1 + 1);
