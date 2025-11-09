@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "build": "pnpm -r run build"
   },
   "devDependencies": {
     "@types/node": "^24.9.1",
