@@ -1,6 +1,6 @@
 {
   "name": "@dynamosearch/plugin-analysis-kuromoji",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "author": "Kenichi Maruyama <11133876+maruyamaworks@users.noreply.github.com>",
   "main": "dist/index.js",
@@ -15,6 +15,9 @@
     "type": "git",
     "url": "https://github.com/maruyamaworks/dynamosearch.git",
     "directory": "packages/plugin-analysis-kuromoji"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc"
