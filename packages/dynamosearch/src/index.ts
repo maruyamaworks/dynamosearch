@@ -76,7 +76,14 @@ const decodeKeys = (str: string, { delimiter = ';', escape = '\\' } = {}) => {
   }
   keys.push(current);
 
-  return keys.map(key => ({ [key.slice(0, 1)]: key.slice(1) } as Record<string, any>));
+  return keys.map(key => ({ [key.slice(0, 1)]: key.slice(1) }));
+};
+
+const encodeBinaryAttribute = (value: AttributeValue): any => {
+  if (value.B && typeof value.B !== 'string') {
+    return { B: Buffer.from(value.B).toString('base64') };
+  }
+  return value;
 };
 
 class DynamoSearch {
@@ -311,6 +318,19 @@ class DynamoSearch {
     await this.updateMetadata({ count, resultMap });
   }
 
+  async reindex(items: Record<string, AttributeValue>[]) {
+    await this.processRecords(items.map((item) => ({
+      eventName: 'MODIFY',
+      dynamodb: {
+        Keys: {
+          [this.partitionKeyName]: encodeBinaryAttribute(item[this.partitionKeyName]),
+          ...(this.sortKeyName ? { [this.sortKeyName]: encodeBinaryAttribute(item[this.sortKeyName]) } : {}),
+        },
+        NewImage: Object.fromEntries(Object.entries(item).map(([key, value]) => [key, encodeBinaryAttribute(value)])),
+      },
+    })));
+  }
+
   async search(query: string, { attributes, maxItems = 100, minScore = 0, bm25: { k1 = 1.2, b = 0.75 } = {} }: SearchOptions = {}) {
     const _attributes = attributes?.map((attributeName) => {
       const attribute = this.attributes.find(attr => attr.name === attributeName.split('^')[0]);
@@ -367,8 +387,8 @@ class DynamoSearch {
         .slice(0, maxItems)
         .map(([key, score]) => ({
           keys: {
-            [this.partitionKeyName]: decodeKeys(key)[0] as AttributeValue,
-            ...(this.sortKeyName ? { [this.sortKeyName]: decodeKeys(key)[1] as AttributeValue } : {}),
+            [this.partitionKeyName]: decodeKeys(key)[0],
+            ...(this.sortKeyName ? { [this.sortKeyName]: decodeKeys(key)[1] } : {}),
           },
           score,
         })),

@@ -212,6 +212,47 @@ test('processRecords (MODIFY)', async () => {
   ]));
 });
 
+test('reindex', async () => {
+  const analyzer = await StandardAnalyzer.getInstance();
+  const dynamosearch = new DynamoSearch({
+    indexTableName: 'dynamosearch_test',
+    attributes: [{ name: 'Message', analyzer }],
+    keys: [{ name: 'Id', type: 'HASH' }],
+  });
+  await dynamosearch.reindex([{
+    Message: { S: 'New item!' },
+    Id: { N: '101' },
+  }]);
+
+  const client = new DynamoDBClient({
+    endpoint: 'http://localhost:8000',
+  });
+  const { Items } = await client.send(new ScanCommand({
+    TableName: 'dynamosearch_test',
+  }));
+  expect(Items).toHaveLength(3);
+  expect(Items).toEqual(expect.arrayContaining([
+    {
+      p: { S: '_' },
+      s: { B: new Uint8Array([0]) },
+      dc: { N: '1' },
+      'tc:Message': { N: '2' },
+    },
+    {
+      p: { S: 'Message;new' },
+      s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
+      k: { S: 'N101' },
+      h: { B: new Uint8Array([232]) },
+    },
+    {
+      p: { S: 'Message;item!' },
+      s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
+      k: { S: 'N101' },
+      h: { B: new Uint8Array([232]) },
+    },
+  ]));
+});
+
 test('processRecords (REMOVE)', async () => {
   const event: DynamoDBStreamEvent = {
     Records: [
