@@ -169,6 +169,7 @@ class DynamoSearch {
   }
 
   async insertTokens(record: DynamoDBRecord, resultMap = new Map<string, number>()) {
+    let inserted = 0;
     for (let i = 0; i < this.attributes.length; i++) {
       const tokens = new Map<string, number>();
       const result = this.attributes[i].analyzer.analyze(record.dynamodb!.NewImage![this.attributes[i].name].S ?? '');
@@ -201,9 +202,10 @@ class DynamoSearch {
           },
         }));
       }
+      inserted += entries.length;
     }
 
-    return resultMap;
+    return inserted;
   }
 
   async deleteTokens(record: DynamoDBRecord, resultMap = new Map<string, number>()) {
@@ -239,6 +241,7 @@ class DynamoSearch {
       const occurrence = Buffer.from(items[i][DynamoSearch.ATTR_SK].B!).readUInt16BE(0);
       resultMap.set(attributeName, (resultMap.get(attributeName) ?? 0) - occurrence);
     }
+    let deleted = 0;
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
       await this.client.send(new BatchWriteItemCommand({
         RequestItems: {
@@ -247,9 +250,10 @@ class DynamoSearch {
           })),
         },
       }));
+      deleted += items.length;
     }
 
-    return resultMap;
+    return deleted;
   }
 
   async getMetadata() {
@@ -299,20 +303,26 @@ class DynamoSearch {
     for (let i = 0; i < records.length; i++) {
       const record = records[i];
       switch (record.eventName) {
-        case 'INSERT':
-          await this.insertTokens(record, resultMap);
-          count++;
+        case 'INSERT': {
+          const inserted = await this.insertTokens(record, resultMap);
+          if (inserted) count++;
           break;
-        case 'MODIFY':
-          await this.deleteTokens(record, resultMap);
-          await this.insertTokens(record, resultMap);
+        }
+        case 'MODIFY': {
+          const deleted = await this.deleteTokens(record, resultMap);
+          if (deleted) count--;
+          const inserted = await this.insertTokens(record, resultMap);
+          if (inserted) count++;
           break;
-        case 'REMOVE':
-          await this.deleteTokens(record, resultMap);
-          count--;
+        }
+        case 'REMOVE': {
+          const deleted = await this.deleteTokens(record, resultMap);
+          if (deleted) count--;
           break;
-        default:
+        }
+        default: {
           throw new Error(`Unknown eventName: ${record.eventName}`);
+        }
       }
     }
     await this.updateMetadata({ count, resultMap });
