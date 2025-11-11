@@ -10,22 +10,12 @@ import {
   ResourceNotFoundException,
   UpdateItemCommand,
   type AttributeValue,
+  type CreateTableCommandInput,
 } from '@aws-sdk/client-dynamodb';
 import type { DynamoDBRecord } from 'aws-lambda';
 import type Analyzer from './analyzers/Analyzer.js';
 
 const BATCH_SIZE = 25;
-
-const INDEX_KEYS = 'keys-index';
-const INDEX_HASH = 'hash-index';
-
-const ATTR_PK = 'p';
-const ATTR_SK = 's';
-const ATTR_KEYS = 'k';
-const ATTR_HASH = 'h';
-
-const ATTR_META_DOCUMENT_COUNT = 'dc';
-const ATTR_META_TOKEN_COUNT = 'tc';
 
 export interface Attribute {
   name: string;
@@ -96,6 +86,22 @@ class DynamoSearch {
   partitionKeyName: string;
   sortKeyName?: string;
 
+  static INDEX_KEYS = 'keys-index';
+  static INDEX_HASH = 'hash-index';
+
+  static ATTR_PK = 'p';
+  static ATTR_SK = 's';
+  static ATTR_KEYS = 'k';
+  static ATTR_HASH = 'h';
+
+  static ATTR_META_DOCUMENT_COUNT = 'dc';
+  static ATTR_META_TOKEN_COUNT = 'tc';
+
+  static META_KEY = {
+    [DynamoSearch.ATTR_PK]: { S: '_' },
+    [DynamoSearch.ATTR_SK]: { B: new Uint8Array([0]) },
+  };
+
   constructor(options: Options) {
     this.client = new DynamoDBClient({
       endpoint: process.env.NODE_ENV === 'test' ? 'http://localhost:8000' : undefined,
@@ -106,34 +112,35 @@ class DynamoSearch {
     this.sortKeyName = options.keys.find(key => key.type === 'RANGE')?.name;
   }
 
-  async createIndexTable({ ifNotExists }: { ifNotExists?: boolean } = {}) {
+  async createIndexTable({ ifNotExists, tableProperties }: { ifNotExists?: boolean; tableProperties?: Partial<CreateTableCommandInput> } = {}) {
     try {
       await this.client.send(new CreateTableCommand({
         TableName: this.indexTableName,
         AttributeDefinitions: [
-          { AttributeName: ATTR_PK, AttributeType: 'S' },
-          { AttributeName: ATTR_SK, AttributeType: 'B' },
-          { AttributeName: ATTR_KEYS, AttributeType: 'S' },
-          { AttributeName: ATTR_HASH, AttributeType: 'B' },
+          { AttributeName: DynamoSearch.ATTR_PK, AttributeType: 'S' },
+          { AttributeName: DynamoSearch.ATTR_SK, AttributeType: 'B' },
+          { AttributeName: DynamoSearch.ATTR_KEYS, AttributeType: 'S' },
+          { AttributeName: DynamoSearch.ATTR_HASH, AttributeType: 'B' },
         ],
         KeySchema: [
-          { AttributeName: ATTR_PK, KeyType: 'HASH' },
-          { AttributeName: ATTR_SK, KeyType: 'RANGE' },
+          { AttributeName: DynamoSearch.ATTR_PK, KeyType: 'HASH' },
+          { AttributeName: DynamoSearch.ATTR_SK, KeyType: 'RANGE' },
         ],
         GlobalSecondaryIndexes: [{
-          IndexName: INDEX_KEYS,
-          KeySchema: [{ AttributeName: ATTR_KEYS, KeyType: 'HASH' }],
+          IndexName: DynamoSearch.INDEX_KEYS,
+          KeySchema: [{ AttributeName: DynamoSearch.ATTR_KEYS, KeyType: 'HASH' }],
           Projection: { ProjectionType: 'KEYS_ONLY' },
         }],
         LocalSecondaryIndexes: [{
-          IndexName: INDEX_HASH,
+          IndexName: DynamoSearch.INDEX_HASH,
           KeySchema: [
-            { AttributeName: ATTR_PK, KeyType: 'HASH' },
-            { AttributeName: ATTR_HASH, KeyType: 'RANGE' },
+            { AttributeName: DynamoSearch.ATTR_PK, KeyType: 'HASH' },
+            { AttributeName: DynamoSearch.ATTR_HASH, KeyType: 'RANGE' },
           ],
           Projection: { ProjectionType: 'KEYS_ONLY' },
         }],
         BillingMode: 'PAY_PER_REQUEST',
+        ...tableProperties,
       }));
     } catch (error) {
       if (!(ifNotExists && error instanceof ResourceInUseException)) {
@@ -177,10 +184,10 @@ class DynamoSearch {
               buffer.writeUInt32BE(Math.min(2 ** 32 - 1, result.length), 2);
               hash.copy(buffer, 6, 0, 8);
               const item = {
-                [ATTR_PK]: { S: `${this.attributes[i].shortName || this.attributes[i].name};${token}` },
-                [ATTR_SK]: { B: buffer },
-                [ATTR_KEYS]: { S: encodedKeys },
-                [ATTR_HASH]: { B: hash.subarray(0, 1) },
+                [DynamoSearch.ATTR_PK]: { S: `${this.attributes[i].shortName || this.attributes[i].name};${token}` },
+                [DynamoSearch.ATTR_SK]: { B: buffer },
+                [DynamoSearch.ATTR_KEYS]: { S: encodedKeys },
+                [DynamoSearch.ATTR_HASH]: { B: hash.subarray(0, 1) },
               };
               return { PutRequest: { Item: item } };
             }),
@@ -202,13 +209,13 @@ class DynamoSearch {
       ]);
       const { Items, LastEvaluatedKey }: { Items?: Record<string, AttributeValue>[]; LastEvaluatedKey?: Record<string, AttributeValue> } = await this.client.send(new QueryCommand({
         TableName: this.indexTableName,
-        IndexName: INDEX_KEYS,
+        IndexName: DynamoSearch.INDEX_KEYS,
         KeyConditionExpression: '#keys = :keys',
         ProjectionExpression: '#pk, #sk',
         ExpressionAttributeNames: {
-          '#pk': ATTR_PK,
-          '#sk': ATTR_SK,
-          '#keys': ATTR_KEYS,
+          '#pk': DynamoSearch.ATTR_PK,
+          '#sk': DynamoSearch.ATTR_SK,
+          '#keys': DynamoSearch.ATTR_KEYS,
         },
         ExpressionAttributeValues: {
           ':keys': { S: encodedKeys },
@@ -220,9 +227,9 @@ class DynamoSearch {
     } while (exclusiveStartKey);
 
     for (let i = 0; i < items.length; i++) {
-      const [shortName]: (string | undefined)[] = items[i][ATTR_PK].S!.split(';');
+      const [shortName]: (string | undefined)[] = items[i][DynamoSearch.ATTR_PK].S!.split(';');
       const attributeName = this.attributes.find(attr => attr.shortName === shortName)?.name ?? shortName;
-      const occurrence = Buffer.from(items[i][ATTR_SK].B!).readUInt16BE(0);
+      const occurrence = Buffer.from(items[i][DynamoSearch.ATTR_SK].B!).readUInt16BE(0);
       resultMap.set(attributeName, (resultMap.get(attributeName) ?? 0) - occurrence);
     }
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
@@ -241,13 +248,13 @@ class DynamoSearch {
   async getMetadata() {
     const { Item } = await this.client.send(new GetItemCommand({
       TableName: this.indexTableName,
-      Key: { [ATTR_PK]: { S: '_' }, [ATTR_SK]: { B: Buffer.alloc(1) } },
+      Key: DynamoSearch.META_KEY,
     }));
 
     return {
-      docCount: parseInt(Item?.[ATTR_META_DOCUMENT_COUNT].N ?? '0'),
-      tokenCount: new Map(Object.entries(Item ?? {}).filter(([key]) => key.startsWith(`${ATTR_META_TOKEN_COUNT}:`)).map(([key, value]) => {
-        const shortName = key.replace(`${ATTR_META_TOKEN_COUNT}:`, '');
+      docCount: parseInt(Item?.[DynamoSearch.ATTR_META_DOCUMENT_COUNT].N ?? '0'),
+      tokenCount: new Map(Object.entries(Item ?? {}).filter(([key]) => key.startsWith(`${DynamoSearch.ATTR_META_TOKEN_COUNT}:`)).map(([key, value]) => {
+        const shortName = key.replace(`${DynamoSearch.ATTR_META_TOKEN_COUNT}:`, '');
         const attributeName = this.attributes.find(attr => attr.shortName === shortName)?.name ?? shortName;
         return [attributeName, parseInt(value.N ?? '0')];
       })),
@@ -257,7 +264,7 @@ class DynamoSearch {
   async updateMetadata({ count, resultMap }: { count: number; resultMap: Map<string, number> }) {
     let updateExpressions = ['#attr = if_not_exists(#attr, :zero) + :val'];
     const expressionAttributeNames: Record<string, string> = {
-      '#attr': ATTR_META_DOCUMENT_COUNT,
+      '#attr': DynamoSearch.ATTR_META_DOCUMENT_COUNT,
     };
     const expressionAttributeValues: Record<string, AttributeValue> = {
       ':zero': { N: '0' },
@@ -267,12 +274,12 @@ class DynamoSearch {
     entries.forEach(([attributeName, value], index) => {
       const shortName = this.attributes.find(attr => attr.name === attributeName)?.shortName ?? attributeName;
       updateExpressions.push(`#attr${index} = if_not_exists(#attr${index}, :zero) + :val${index}`);
-      expressionAttributeNames[`#attr${index}`] = `${ATTR_META_TOKEN_COUNT}:${shortName}`;
+      expressionAttributeNames[`#attr${index}`] = `${DynamoSearch.ATTR_META_TOKEN_COUNT}:${shortName}`;
       expressionAttributeValues[`:val${index}`] = { N: value.toString() };
     });
     await this.client.send(new UpdateItemCommand({
       TableName: this.indexTableName,
-      Key: { [ATTR_PK]: { S: '_' }, [ATTR_SK]: { B: Buffer.alloc(1) } },
+      Key: DynamoSearch.META_KEY,
       UpdateExpression: `SET ${updateExpressions.join(', ')}`,
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
@@ -326,9 +333,9 @@ class DynamoSearch {
           KeyConditionExpression: '#pk = :pk',
           ProjectionExpression: '#sk, #keys',
           ExpressionAttributeNames: {
-            '#pk': ATTR_PK,
-            '#sk': ATTR_SK,
-            '#keys': ATTR_KEYS,
+            '#pk': DynamoSearch.ATTR_PK,
+            '#sk': DynamoSearch.ATTR_SK,
+            '#keys': DynamoSearch.ATTR_KEYS,
           },
           ExpressionAttributeValues: {
             ':pk': { S: `${_attributes[i].shortName || _attributes[i].name};${words[j]}` },
@@ -341,9 +348,9 @@ class DynamoSearch {
         if (Items) {
           const idf = Math.log(1 + (docCount - Items.length + 0.5) / (Items.length + 0.5));
           Items.forEach((item) => {
-            const occurrence = Buffer.from(item[ATTR_SK].B!).readUInt16BE(0);
-            const tokenCount = Buffer.from(item[ATTR_SK].B!).readUInt32BE(2);
-            const encodedKeys = item[ATTR_KEYS].S!;
+            const occurrence = Buffer.from(item[DynamoSearch.ATTR_SK].B!).readUInt16BE(0);
+            const tokenCount = Buffer.from(item[DynamoSearch.ATTR_SK].B!).readUInt32BE(2);
+            const encodedKeys = item[DynamoSearch.ATTR_KEYS].S!;
             const averageTokenCount = tokenCountMap.get(_attributes[i].name)! / docCount;
             const tf = occurrence / (occurrence + k1 * (1 - b + b * (tokenCount / averageTokenCount)));
             const score = (_attributes[i].boost ?? 1) * tf * idf * (k1 + 1);
