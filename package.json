@@ -1,6 +1,6 @@
 {
   "name": "dynamosearch",
-  "version": "0.2.1",
+  "version": "0.0.0",
   "private": true,
   "scripts": {
     "test": "vitest",
@@ -8,9 +8,9 @@
     "build": "pnpm --filter dynamosearch run build && pnpm --filter @dynamosearch/* run build"
   },
   "devDependencies": {
-    "@types/node": "^24.9.1",
-    "@vitest/coverage-v8": "^4.0.6",
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.8",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.3"
+    "vitest": "^4.0.8"
   }
 }

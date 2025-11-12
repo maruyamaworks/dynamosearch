@@ -1,0 +1,177 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: DynamoSearch Sample Application
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: nodejs22.x
+    MemorySize: 512
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        INDEX_TABLE_NAME: !Ref SearchIndexTable
+
+Resources:
+  # Source DynamoDB table with Stream enabled
+  DocumentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-documents
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+
+  # Search index table
+  SearchIndexTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-search-index
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: p
+          AttributeType: S
+        - AttributeName: s
+          AttributeType: B
+        - AttributeName: k
+          AttributeType: S
+        - AttributeName: h
+          AttributeType: B
+      KeySchema:
+        - AttributeName: p
+          KeyType: HASH
+        - AttributeName: s
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: keys-index
+          KeySchema:
+            - AttributeName: k
+              KeyType: HASH
+          Projection:
+            ProjectionType: KEYS_ONLY
+      LocalSecondaryIndexes:
+        - IndexName: hash-index
+          KeySchema:
+            - AttributeName: p
+              KeyType: HASH
+            - AttributeName: h
+              KeyType: RANGE
+          Projection:
+            ProjectionType: KEYS_ONLY
+
+  # Lambda function to process DynamoDB Stream
+  IndexerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - src/indexer.ts
+        External:
+          - '@aws-sdk/*'
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-indexer
+      CodeUri: ./
+      Handler: src/indexer.handler
+      Events:
+        Stream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt DocumentsTable.StreamArn
+            StartingPosition: LATEST
+            BatchSize: 100
+            MaximumBatchingWindowInSeconds: 5
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SearchIndexTable
+        - DynamoDBStreamReadPolicy:
+            TableName: !Ref DocumentsTable
+            StreamName: !Select [3, !Split ["/", !GetAtt DocumentsTable.StreamArn]]
+
+  # Lambda function for search API
+  SearchFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - src/search.ts
+        External:
+          - '@aws-sdk/*'
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-search
+      CodeUri: ./
+      Handler: src/search.handler
+      Events:
+        SearchApi:
+          Type: Api
+          Properties:
+            Path: /search
+            Method: get
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref SearchIndexTable
+
+  # Lambda function for adding documents
+  AddDocumentFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - src/add-document.ts
+        External:
+          - '@aws-sdk/*'
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-add-document
+      CodeUri: ./
+      Handler: src/add-document.handler
+      Environment:
+        Variables:
+          DOCUMENTS_TABLE_NAME: !Ref DocumentsTable
+      Events:
+        AddDocumentApi:
+          Type: Api
+          Properties:
+            Path: /documents
+            Method: post
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DocumentsTable
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod
+
+  DocumentsTableName:
+    Description: Documents table name
+    Value: !Ref DocumentsTable
+
+  SearchIndexTableName:
+    Description: Search index table name
+    Value: !Ref SearchIndexTable
+
+  AddDocumentUrl:
+    Description: URL to add documents
+    Value: !Sub https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/documents
+
+  SearchUrl:
+    Description: URL to search documents
+    Value: !Sub https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/search
