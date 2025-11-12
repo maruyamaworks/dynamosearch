@@ -133,19 +133,23 @@ class DynamoSearch {
           { AttributeName: DynamoSearch.ATTR_PK, KeyType: 'HASH' },
           { AttributeName: DynamoSearch.ATTR_SK, KeyType: 'RANGE' },
         ],
-        GlobalSecondaryIndexes: [{
-          IndexName: DynamoSearch.INDEX_KEYS,
-          KeySchema: [{ AttributeName: DynamoSearch.ATTR_KEYS, KeyType: 'HASH' }],
-          Projection: { ProjectionType: 'KEYS_ONLY' },
-        }],
-        LocalSecondaryIndexes: [{
-          IndexName: DynamoSearch.INDEX_HASH,
-          KeySchema: [
-            { AttributeName: DynamoSearch.ATTR_PK, KeyType: 'HASH' },
-            { AttributeName: DynamoSearch.ATTR_HASH, KeyType: 'RANGE' },
-          ],
-          Projection: { ProjectionType: 'KEYS_ONLY' },
-        }],
+        GlobalSecondaryIndexes: [
+          {
+            IndexName: DynamoSearch.INDEX_KEYS,
+            KeySchema: [
+              { AttributeName: DynamoSearch.ATTR_KEYS, KeyType: 'HASH' },
+            ],
+            Projection: { ProjectionType: 'KEYS_ONLY' },
+          },
+          {
+            IndexName: DynamoSearch.INDEX_HASH,
+            KeySchema: [
+              { AttributeName: DynamoSearch.ATTR_PK, KeyType: 'HASH' },
+              { AttributeName: DynamoSearch.ATTR_HASH, KeyType: 'RANGE' },
+            ],
+            Projection: { ProjectionType: 'KEYS_ONLY' },
+          },
+        ],
         BillingMode: 'PAY_PER_REQUEST',
         ...tableProperties,
       }));

@@ -24,4 +24,4 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm run build
-      - run: pnpm -r publish
+      - run: pnpm -r --filter "./packages/**" publish
