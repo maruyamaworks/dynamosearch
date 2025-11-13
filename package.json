@@ -5,12 +5,17 @@
   "scripts": {
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "build": "pnpm --filter dynamosearch run build && pnpm --filter @dynamosearch/* run build"
+    "build": "pnpm --filter dynamosearch run build && pnpm --filter @dynamosearch/* run build",
+    "docs:dev": "pnpm --filter docs run dev",
+    "docs:build": "pnpm --filter docs run build",
+    "docs:preview": "pnpm --filter docs run preview"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.8",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.8"
+    "vitepress": "^1.6.4",
+    "vitest": "^4.0.8",
+    "vue": "^3.5.24"
   }
 }
