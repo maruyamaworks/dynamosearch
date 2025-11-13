@@ -27,6 +27,8 @@ importers:
         specifier: ^3.5.24
         version: 3.5.24(typescript@5.9.3)
 
+  docs: {}
+
   examples/serverless-api:
     dependencies:
       '@aws-sdk/client-dynamodb':

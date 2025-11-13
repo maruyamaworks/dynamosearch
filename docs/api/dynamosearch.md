@@ -413,9 +413,3 @@ sortKeyName?: string
 ```
 
 Name of the sort key from source table (if exists).
-
-## See Also
-
-- [Getting Started](/guide/getting-started) - Setup guide
-- [Quick Start](/guide/quick-start) - Complete example
-- [Lambda Integration](/guide/lambda-integration) - Production deployment

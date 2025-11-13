@@ -85,9 +85,3 @@ interface SearchResultItem {
   score: number;
 }
 ```
-
-## Next Steps
-
-- [DynamoSearch Class](/api/dynamosearch) - Detailed class reference
-- [Analyzers](/api/analyzers) - Text analysis API
-- [Quick Start](/guide/quick-start) - Build your first app

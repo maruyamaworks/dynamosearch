@@ -396,9 +396,3 @@ if (totalProcessed % 10000 === 0) {
   }));
 }
 ```
-
-## Next Steps
-
-- [Index Management](/guide/index-management) - Optimize your index
-- [Lambda Integration](/guide/lambda-integration) - Automate reindexing
-- [API Reference](/api/dynamosearch) - Complete API documentation

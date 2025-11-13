@@ -430,9 +430,3 @@ Create `events/search.json`:
   }
 }
 ```
-
-## Next Steps
-
-- [Reindexing](/guide/reindexing) - Manage index updates
-- [API Reference](/api/dynamosearch) - Complete API documentation
-- [Example Application](https://github.com/maruyamaworks/dynamosearch/tree/main/examples/serverless-api) - Full example code

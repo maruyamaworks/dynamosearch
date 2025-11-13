@@ -448,10 +448,3 @@ for (const input of testCases) {
   console.log('---');
 }
 ```
-
-## See Also
-
-- [Analyzers API](/api/analyzers) - Build complete analyzers
-- [Tokenizers API](/api/tokenizers) - Split text into tokens
-- [Text Analysis Guide](/guide/text-analysis) - Comprehensive guide
-- [Custom Analyzers](/guide/custom-analyzers) - Build custom components

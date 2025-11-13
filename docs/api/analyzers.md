@@ -285,10 +285,3 @@ class HtmlAnalyzer extends Analyzer {
 3. **Cache compiled regexes** - Don't recreate patterns
 4. **Keep filters simple** - Complex logic slows indexing
 5. **Test with real data** - Validate performance at scale
-
-## See Also
-
-- [Text Analysis Guide](/guide/text-analysis) - Comprehensive guide
-- [Custom Analyzers Guide](/guide/custom-analyzers) - Build custom analyzers
-- [Tokenizers API](/api/tokenizers) - Available tokenizers
-- [Filters API](/api/filters) - Available filters

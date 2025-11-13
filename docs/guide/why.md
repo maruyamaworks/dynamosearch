@@ -96,9 +96,3 @@ const results = await dynamosearch.search('machine learning', {
   minScore: 0.5,
 });
 ```
-
-## Next Steps
-
-- [Getting Started](/guide/getting-started) - Install and set up DynamoSearch
-- [Quick Start](/guide/quick-start) - Build your first search application
-- [Text Analysis](/guide/text-analysis) - Learn about analyzers and tokenizers

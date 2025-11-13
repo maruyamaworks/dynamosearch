@@ -284,8 +284,3 @@ const analyzer = await MyAnalyzer.getInstance();
 const tokens = analyzer.analyze('Your test text here');
 console.log(tokens);
 ```
-
-## Next Steps
-
-- [Custom Analyzers](/guide/custom-analyzers) - Build advanced custom analyzers
-- [API Reference](/api/analyzers) - Complete analyzer API

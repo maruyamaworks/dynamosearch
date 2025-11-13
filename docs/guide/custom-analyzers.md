@@ -453,9 +453,3 @@ const goodFilter = (str: string): string => {
   return str.replace(pattern, 'replacement');
 };
 ```
-
-## Next Steps
-
-- [API Reference](/api/analyzers) - Complete analyzer API
-- [Text Analysis](/guide/text-analysis) - Built-in components
-- [Lambda Integration](/guide/lambda-integration) - Deploy your analyzer

@@ -222,8 +222,3 @@ Check DynamoDB consumed capacity to optimize cost:
 const results = await dynamosearch.search('query');
 console.log('Consumed capacity:', results.consumedCapacity);
 ```
-
-## Next Steps
-
-- [Index Management](/guide/index-management) - Optimize your index structure
-- [AWS Lambda Integration](/guide/lambda-integration) - Deploy to production

@@ -327,9 +327,3 @@ console.log({
 5. **Reindex during off-peak hours** - Reduce impact on production
 6. **Use batching for reindex** - Process in manageable chunks
 7. **Test with production data size** - Ensure performance at scale
-
-## Next Steps
-
-- [Custom Analyzers](/guide/custom-analyzers) - Optimize text analysis
-- [Lambda Integration](/guide/lambda-integration) - Deploy to production
-- [Reindexing](/guide/reindexing) - Advanced reindexing strategies

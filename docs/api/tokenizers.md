@@ -400,10 +400,3 @@ for (const input of testCases) {
   console.log('---');
 }
 ```
-
-## See Also
-
-- [Analyzers API](/api/analyzers) - Combine with analyzers
-- [Filters API](/api/filters) - Post-process tokens
-- [Text Analysis Guide](/guide/text-analysis) - Comprehensive guide
-- [Custom Analyzers](/guide/custom-analyzers) - Build custom components
