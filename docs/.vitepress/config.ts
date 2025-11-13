@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress';
 
 export default defineConfig({
+  base: '/dynamosearch/',
   title: 'DynamoSearch',
   description: 'Full-text search by DynamoDB, for DynamoDB',
   themeConfig: {
