@@ -11,6 +11,7 @@ import {
   UpdateItemCommand,
   type AttributeValue,
   type CreateTableCommandInput,
+  type DynamoDBClientConfig,
 } from '@aws-sdk/client-dynamodb';
 import type { DynamoDBRecord } from 'aws-lambda';
 import type Analyzer from './analyzers/Analyzer.js';
@@ -33,6 +34,7 @@ export interface Options {
   indexTableName: string;
   attributes: Attribute[];
   keys: Key[];
+  dynamoDBClientConfig?: DynamoDBClientConfig;
 }
 
 export interface SearchOptions {
@@ -86,6 +88,19 @@ const encodeBinaryAttribute = (value: AttributeValue): any => {
   return value;
 };
 
+const extractStringValues = (value: AWSLambda.AttributeValue): string[] => {
+  if (value.S) {
+    return [value.S];
+  }
+  if (value.SS) {
+    return value.SS;
+  }
+  if (value.L) {
+    return value.L.flatMap(extractStringValues);
+  }
+  return [];
+};
+
 class DynamoSearch {
   client: DynamoDBClient;
   indexTableName: string;
@@ -110,9 +125,7 @@ class DynamoSearch {
   };
 
   constructor(options: Options) {
-    this.client = new DynamoDBClient({
-      endpoint: process.env.NODE_ENV === 'test' ? 'http://localhost:8000' : undefined,
-    });
+    this.client = new DynamoDBClient({ ...options.dynamoDBClientConfig });
     this.indexTableName = options.indexTableName;
     this.attributes = options.attributes;
     this.partitionKeyName = options.keys.find(key => key.type === 'HASH')!.name;
@@ -176,7 +189,8 @@ class DynamoSearch {
     let inserted = 0;
     for (let i = 0; i < this.attributes.length; i++) {
       const tokens = new Map<string, number>();
-      const result = this.attributes[i].analyzer.analyze(record.dynamodb!.NewImage![this.attributes[i].name].S ?? '');
+      const attributeValues = extractStringValues(record.dynamodb!.NewImage![this.attributes[i].name]);
+      const result = attributeValues.flatMap(str => this.attributes[i].analyzer.analyze(str));
       resultMap.set(this.attributes[i].name, (resultMap.get(this.attributes[i].name) ?? 0) + result.length);
       for (let j = 0; j < result.length; j++) {
         tokens.set(result[j].text, (tokens.get(result[j].text) ?? 0) + 1);

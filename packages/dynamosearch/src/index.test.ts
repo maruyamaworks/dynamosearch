@@ -10,6 +10,9 @@ beforeAll(async () => {
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
     keys: [{ name: 'Id', type: 'HASH' }],
+    dynamoDBClientConfig: {
+      endpoint: 'http://localhost:8000',
+    },
   });
   await dynamosearch.deleteIndexTable({ ifExists: true });
   await dynamosearch.createIndexTable();
@@ -45,6 +48,9 @@ test('processRecords (INSERT)', async () => {
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
     keys: [{ name: 'Id', type: 'HASH' }],
+    dynamoDBClientConfig: {
+      endpoint: 'http://localhost:8000',
+    },
   });
   await dynamosearch.processRecords(event.Records);
 
@@ -122,6 +128,9 @@ test('search', async () => {
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
     keys: [{ name: 'Id', type: 'HASH' }],
+    dynamoDBClientConfig: {
+      endpoint: 'http://localhost:8000',
+    },
   });
   const { items } = await dynamosearch.search('New item!');
   expect(items).toEqual([
@@ -168,6 +177,9 @@ test('processRecords (MODIFY)', async () => {
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
     keys: [{ name: 'Id', type: 'HASH' }],
+    dynamoDBClientConfig: {
+      endpoint: 'http://localhost:8000',
+    },
   });
   await dynamosearch.processRecords(event.Records);
 
@@ -218,6 +230,9 @@ test('reindex', async () => {
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
     keys: [{ name: 'Id', type: 'HASH' }],
+    dynamoDBClientConfig: {
+      endpoint: 'http://localhost:8000',
+    },
   });
   await dynamosearch.reindex([{
     Message: { S: 'New item!' },
@@ -283,6 +298,9 @@ test('processRecords (REMOVE)', async () => {
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
     keys: [{ name: 'Id', type: 'HASH' }],
+    dynamoDBClientConfig: {
+      endpoint: 'http://localhost:8000',
+    },
   });
   await dynamosearch.processRecords(event.Records);
 
