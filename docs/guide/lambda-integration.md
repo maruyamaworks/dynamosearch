@@ -367,9 +367,3 @@ Common issues:
 
 3. Verify table name:
    - Ensure `INDEX_TABLE_NAME` environment variable is correct
-
-## Next Steps
-
-- [Cost Optimization](/guide/cost-optimization) - Reduce DynamoDB costs
-- [Text Analysis](/guide/text-analysis) - Use different analyzers
-- [API Reference](/api/dynamosearch) - Learn advanced search options

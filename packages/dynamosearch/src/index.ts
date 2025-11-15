@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { WriteStream } from 'node:fs';
+import { appendFile } from 'node:fs/promises';
 import {
   DynamoDBClient,
   BatchWriteItemCommand,
@@ -88,14 +88,14 @@ const encodeBinaryAttribute = (value: AttributeValue): any => {
   return value;
 };
 
-const extractStringValues = (value: AWSLambda.AttributeValue): string[] => {
-  if (value.S) {
+const extractStringValues = (value?: AWSLambda.AttributeValue): string[] => {
+  if (value?.S) {
     return [value.S];
   }
-  if (value.SS) {
+  if (value?.SS) {
     return value.SS;
   }
-  if (value.L) {
+  if (value?.L) {
     return value.L.flatMap(extractStringValues);
   }
   return [];
@@ -121,7 +121,7 @@ class DynamoSearch {
 
   static readonly META_KEY = {
     [DynamoSearch.ATTR_PK]: { S: '_' },
-    [DynamoSearch.ATTR_SK]: { B: new Uint8Array([0]) },
+    [DynamoSearch.ATTR_SK]: { B: Buffer.alloc(1) },
   };
 
   constructor(options: Options) {
@@ -282,7 +282,7 @@ class DynamoSearch {
     return { deleted, resultMap };
   }
 
-  exportTokensAsFile(item: Record<string, AWSLambda.AttributeValue>, stream: WriteStream, resultMap = new Map<string, number>(), metadata = true) {
+  async exportTokensAsFile(path: string, item: Record<string, AWSLambda.AttributeValue>, resultMap = new Map<string, number>(), metadata = true) {
     let inserted = 0;
     for (let i = 0; i < this.attributes.length; i++) {
       const tokens = new Map<string, number>();
@@ -301,26 +301,25 @@ class DynamoSearch {
         hash.copy(buffer, 6, 0, 8);
         const data = {
           [DynamoSearch.ATTR_PK]: { S: `${this.attributes[i].shortName || this.attributes[i].name};${token}` },
-          [DynamoSearch.ATTR_SK]: { B: buffer },
+          [DynamoSearch.ATTR_SK]: { B: buffer.toString('base64') },
           [DynamoSearch.ATTR_KEYS]: { S: encodedKeys },
-          [DynamoSearch.ATTR_HASH]: { B: hash.subarray(0, 1) },
+          [DynamoSearch.ATTR_HASH]: { B: hash.subarray(0, 1).toString('base64') },
         };
-        stream.write(JSON.stringify({ Item: data }));
-        stream.write('\n');
+        await appendFile(path, JSON.stringify({ Item: data }) + '\n');
       }
       inserted += tokens.size;
     }
     if (metadata) {
       const data = {
-        ...DynamoSearch.META_KEY,
+        [DynamoSearch.ATTR_PK]: { S: '_' },
+        [DynamoSearch.ATTR_SK]: { B: Buffer.alloc(1).toString('base64') },
+        [DynamoSearch.ATTR_META_DOCUMENT_COUNT]: { N: inserted.toString() },
         ...Object.fromEntries([...resultMap.entries()].map(([attributeName, value]) => {
           const shortName = this.attributes.find(attr => attr.name === attributeName)?.shortName ?? attributeName;
-          return [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:${shortName}`, value];
+          return [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:${shortName}`, { N: value.toString() }];
         })),
-        [DynamoSearch.ATTR_META_DOCUMENT_COUNT]: { N: inserted.toString() },
       };
-      stream.write(JSON.stringify({ Item: data }));
-      stream.write('\n');
+      await appendFile(path, JSON.stringify({ Item: data }) + '\n');
     }
 
     return { inserted, resultMap };

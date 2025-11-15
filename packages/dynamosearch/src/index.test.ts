@@ -1,3 +1,4 @@
+import { readFile, unlink } from 'node:fs/promises';
 import { test, expect, beforeAll } from 'vitest';
 import { DynamoDBClient, BatchWriteItemCommand, ScanCommand } from '@aws-sdk/client-dynamodb';
 import type { DynamoDBStreamEvent } from 'aws-lambda';
@@ -266,6 +267,30 @@ test('reindex', async () => {
       h: { B: new Uint8Array([232]) },
     },
   ]));
+});
+
+test('exportTokensAsFile', async () => {
+  const analyzer = await StandardAnalyzer.getInstance();
+  const dynamosearch = new DynamoSearch({
+    indexTableName: 'dynamosearch_test',
+    attributes: [{ name: 'Message', analyzer }],
+    keys: [{ name: 'Id', type: 'HASH' }],
+    dynamoDBClientConfig: {
+      endpoint: 'http://localhost:8000',
+    },
+  });
+  await dynamosearch.exportTokensAsFile('./test.jsonl', {
+    Message: { S: 'New item!' },
+    Id: { N: '101' },
+  });
+
+  const file = await readFile('./test.jsonl', 'utf8');
+  expect(file).toEqual(`{"Item":{"p":{"S":"Message;new"},"s":{"B":"AAEAAAAC6PSxuqNYWZ8="},"k":{"S":"N101"},"h":{"B":"6A=="}}}
+{"Item":{"p":{"S":"Message;item!"},"s":{"B":"AAEAAAAC6PSxuqNYWZ8="},"k":{"S":"N101"},"h":{"B":"6A=="}}}
+{"Item":{"p":{"S":"_"},"s":{"B":"AA=="},"dc":{"N":"2"},"tc:Message":{"N":"2"}}}
+`);
+
+  await unlink('./test.jsonl');
 });
 
 test('processRecords (REMOVE)', async () => {

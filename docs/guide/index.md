@@ -365,7 +365,7 @@ The search results include:
 - `consumedCapacity`: DynamoDB capacity units consumed by the search operation
 
 ::: info
-For more advanced search features like field boosting and filters, see the [API Reference](/api/dynamosearch).
+For more advanced search features like field boosting and filters, see the [API Reference](/reference/).
 :::
 
 ## Step 7 (Optional): Retrieve Full Documents

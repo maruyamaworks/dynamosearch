@@ -270,22 +270,22 @@ await dynamosearch.reindex(Items);
 ## exportTokensAsFile()
 
 ```typescript
-exportTokensAsFile(
+async exportTokensAsFile(
+  path: string,
   item: Record<string, AttributeValue>,
-  stream: WriteStream,
   resultMap?: Map<string, number>,
   metadata?: boolean
 ): Promise<{ inserted: number; resultMap: Map<string, number> }>
 ```
 
-Exports tokens for a single document to a file stream in JSON Lines format.
+Exports tokens for a single document to a file in JSON Lines format.
 
 The exported file can be uploaded to an S3 bucket and imported into DynamoDB using the [Import from S3](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/S3DataImport.HowItWorks.html) feature. This is particularly useful for initial bulk loading of large datasets.
 
 ### Parameters
 
+- **path** (`string`) - File path to write tokens to
 - **item** (`Record<string, AttributeValue>`) - DynamoDB item to tokenize
-- **stream** (`WriteStream`) - Node.js write stream to output tokens
 - **resultMap** (`Map<string, number>`, optional) - Map to accumulate token counts per attribute (default: `new Map()`)
 - **metadata** (`boolean`, optional) - Include metadata record in output (default: `true`)
 
@@ -309,14 +309,8 @@ Each line is a JSON object with `Item` property containing token data:
 ### Example
 
 ```typescript
-import { createWriteStream } from 'node:fs';
-
-const stream = createWriteStream('tokens.jsonl');
-
-// Export tokens for multiple items
-await dynamosearch.exportTokensAsFile(items, stream);
-
-stream.end();
+// Export tokens for a single item
+await dynamosearch.exportTokensAsFile('tokens.jsonl', item);
 ```
 
 ### Use Cases
