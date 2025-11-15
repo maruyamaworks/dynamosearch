@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { WriteStream } from 'node:fs';
 import {
   DynamoDBClient,
   BatchWriteItemCommand,
@@ -184,11 +185,25 @@ class DynamoSearch {
     }
   }
 
-  async insertTokens(record: DynamoDBRecord, resultMap = new Map<string, number>()) {
+  private getEncodedKeys(item: Record<string, AWSLambda.AttributeValue>) {
+    return encodeKeys([
+      item[this.partitionKeyName],
+      ...(this.sortKeyName ? [item[this.sortKeyName]] : []),
+    ]);
+  }
+
+  private getDecodedKeys(str: string) {
+    return {
+      [this.partitionKeyName]: decodeKeys(str)[0],
+      ...(this.sortKeyName ? { [this.sortKeyName]: decodeKeys(str)[1] } : {}),
+    };
+  }
+
+  async insertTokens(item: Record<string, AWSLambda.AttributeValue>, resultMap = new Map<string, number>()) {
     let inserted = 0;
     for (let i = 0; i < this.attributes.length; i++) {
       const tokens = new Map<string, number>();
-      const attributeValues = extractStringValues(record.dynamodb!.NewImage![this.attributes[i].name]);
+      const attributeValues = extractStringValues(item[this.attributes[i].name]);
       const result = attributeValues.flatMap(str => this.attributes[i].analyzer.analyze(str));
       resultMap.set(this.attributes[i].name, (resultMap.get(this.attributes[i].name) ?? 0) + result.length);
       for (let j = 0; j < result.length; j++) {
@@ -199,22 +214,19 @@ class DynamoSearch {
         await this.client.send(new BatchWriteItemCommand({
           RequestItems: {
             [this.indexTableName]: entries.slice(j, j + BATCH_SIZE).map(([token, occurrence]) => {
-              const encodedKeys = encodeKeys([
-                record.dynamodb!.Keys![this.partitionKeyName],
-                ...(this.sortKeyName ? [record.dynamodb!.Keys![this.sortKeyName]] : []),
-              ]);
+              const encodedKeys = this.getEncodedKeys(item);
               const hash = createHash('md5').update(encodedKeys).digest();
               const buffer = Buffer.allocUnsafe(14);
               buffer.writeUInt16BE(Math.min(2 ** 16 - 1, occurrence), 0);
               buffer.writeUInt32BE(Math.min(2 ** 32 - 1, result.length), 2);
               hash.copy(buffer, 6, 0, 8);
-              const item = {
+              const data = {
                 [DynamoSearch.ATTR_PK]: { S: `${this.attributes[i].shortName || this.attributes[i].name};${token}` },
                 [DynamoSearch.ATTR_SK]: { B: buffer },
                 [DynamoSearch.ATTR_KEYS]: { S: encodedKeys },
                 [DynamoSearch.ATTR_HASH]: { B: hash.subarray(0, 1) },
               };
-              return { PutRequest: { Item: item } };
+              return { PutRequest: { Item: data } };
             }),
           },
         }));
@@ -222,17 +234,14 @@ class DynamoSearch {
       inserted += entries.length;
     }
 
-    return inserted;
+    return { inserted, resultMap };
   }
 
-  async deleteTokens(record: DynamoDBRecord, resultMap = new Map<string, number>()) {
+  async deleteTokens(item: Record<string, AWSLambda.AttributeValue>, resultMap = new Map<string, number>()) {
     const items: Record<string, AttributeValue>[] = [];
     let exclusiveStartKey: Record<string, AttributeValue> | undefined = undefined;
     do {
-      const encodedKeys = encodeKeys([
-        record.dynamodb!.Keys![this.partitionKeyName],
-        ...(this.sortKeyName ? [record.dynamodb!.Keys![this.sortKeyName]] : []),
-      ]);
+      const encodedKeys = this.getEncodedKeys(item);
       const { Items, LastEvaluatedKey }: { Items?: Record<string, AttributeValue>[]; LastEvaluatedKey?: Record<string, AttributeValue> } = await this.client.send(new QueryCommand({
         TableName: this.indexTableName,
         IndexName: DynamoSearch.INDEX_KEYS,
@@ -262,15 +271,59 @@ class DynamoSearch {
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
       await this.client.send(new BatchWriteItemCommand({
         RequestItems: {
-          [this.indexTableName]: items.slice(i, i + BATCH_SIZE).map((item) => ({
-            DeleteRequest: { Key: item },
+          [this.indexTableName]: items.slice(i, i + BATCH_SIZE).map((keys) => ({
+            DeleteRequest: { Key: keys },
           })),
         },
       }));
       deleted += items.length;
     }
 
-    return deleted;
+    return { deleted, resultMap };
+  }
+
+  exportTokensAsFile(item: Record<string, AWSLambda.AttributeValue>, stream: WriteStream, resultMap = new Map<string, number>(), metadata = true) {
+    let inserted = 0;
+    for (let i = 0; i < this.attributes.length; i++) {
+      const tokens = new Map<string, number>();
+      const attributeValues = extractStringValues(item[this.attributes[i].name]);
+      const result = attributeValues.flatMap(str => this.attributes[i].analyzer.analyze(str));
+      resultMap.set(this.attributes[i].name, (resultMap.get(this.attributes[i].name) ?? 0) + result.length);
+      for (let j = 0; j < result.length; j++) {
+        tokens.set(result[j].text, (tokens.get(result[j].text) ?? 0) + 1);
+      }
+      for (const [token, occurrence] of tokens.entries()) {
+        const encodedKeys = this.getEncodedKeys(item);
+        const hash = createHash('md5').update(encodedKeys).digest();
+        const buffer = Buffer.allocUnsafe(14);
+        buffer.writeUInt16BE(Math.min(2 ** 16 - 1, occurrence), 0);
+        buffer.writeUInt32BE(Math.min(2 ** 32 - 1, result.length), 2);
+        hash.copy(buffer, 6, 0, 8);
+        const data = {
+          [DynamoSearch.ATTR_PK]: { S: `${this.attributes[i].shortName || this.attributes[i].name};${token}` },
+          [DynamoSearch.ATTR_SK]: { B: buffer },
+          [DynamoSearch.ATTR_KEYS]: { S: encodedKeys },
+          [DynamoSearch.ATTR_HASH]: { B: hash.subarray(0, 1) },
+        };
+        stream.write(JSON.stringify({ Item: data }));
+        stream.write('\n');
+      }
+      inserted += tokens.size;
+    }
+    if (metadata) {
+      const data = {
+        ...DynamoSearch.META_KEY,
+        ...Object.fromEntries([...resultMap.entries()].map(([attributeName, value]) => {
+          const shortName = this.attributes.find(attr => attr.name === attributeName)?.shortName ?? attributeName;
+          return [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:${shortName}`, value];
+        })),
+        [DynamoSearch.ATTR_META_DOCUMENT_COUNT]: { N: inserted.toString() },
+      };
+      stream.write(JSON.stringify({ Item: data }));
+      stream.write('\n');
+    }
+
+    return { inserted, resultMap };
   }
 
   async getMetadata() {
@@ -319,43 +372,29 @@ class DynamoSearch {
     const resultMap = new Map<string, number>();
     for (let i = 0; i < records.length; i++) {
       const record = records[i];
-      switch (record.eventName) {
-        case 'INSERT': {
-          const inserted = await this.insertTokens(record, resultMap);
-          if (inserted) count++;
-          break;
-        }
-        case 'MODIFY': {
-          const deleted = await this.deleteTokens(record, resultMap);
-          if (deleted) count--;
-          const inserted = await this.insertTokens(record, resultMap);
-          if (inserted) count++;
-          break;
-        }
-        case 'REMOVE': {
-          const deleted = await this.deleteTokens(record, resultMap);
-          if (deleted) count--;
-          break;
-        }
-        default: {
-          throw new Error(`Unknown eventName: ${record.eventName}`);
-        }
+      if (record.eventName === 'MODIFY' || record.eventName === 'REMOVE') {
+        const { deleted } = await this.deleteTokens(record.dynamodb!.Keys!, resultMap);
+        if (deleted > 0) count--;
+      }
+      if (record.eventName === 'MODIFY' || record.eventName === 'INSERT') {
+        const { inserted } = await this.insertTokens(record.dynamodb!.NewImage!, resultMap);
+        if (inserted > 0) count++;
       }
     }
     await this.updateMetadata({ count, resultMap });
   }
 
   async reindex(items: Record<string, AttributeValue>[]) {
-    await this.processRecords(items.map((item) => ({
-      eventName: 'MODIFY',
-      dynamodb: {
-        Keys: {
-          [this.partitionKeyName]: encodeBinaryAttribute(item[this.partitionKeyName]),
-          ...(this.sortKeyName ? { [this.sortKeyName]: encodeBinaryAttribute(item[this.sortKeyName]) } : {}),
-        },
-        NewImage: Object.fromEntries(Object.entries(item).map(([key, value]) => [key, encodeBinaryAttribute(value)])),
-      },
-    })));
+    let count = 0;
+    const resultMap = new Map<string, number>();
+    for (let i = 0; i < items.length; i++) {
+      const encoded = Object.fromEntries(Object.entries(items[i]).map(([key, value]) => [key, encodeBinaryAttribute(value)]));
+      const { deleted } = await this.deleteTokens(encoded, resultMap);
+      if (deleted > 0) count--;
+      const { inserted } = await this.insertTokens(encoded, resultMap);
+      if (inserted > 0) count++;
+    }
+    await this.updateMetadata({ count, resultMap });
   }
 
   async search(query: string, { attributes, maxItems = 100, minScore = 0, bm25: { k1 = 1.2, b = 0.75 } = {} }: SearchOptions = {}) {
@@ -413,10 +452,7 @@ class DynamoSearch {
         .sort(([, score_A], [, score_B]) => score_B - score_A)
         .slice(0, maxItems)
         .map(([key, score]) => ({
-          keys: {
-            [this.partitionKeyName]: decodeKeys(key)[0],
-            ...(this.sortKeyName ? { [this.sortKeyName]: decodeKeys(key)[1] } : {}),
-          },
+          keys: this.getDecodedKeys(key),
           score,
         })),
       consumedCapacity: {

@@ -267,6 +267,68 @@ const { Items } = await client.send(new ScanCommand({
 await dynamosearch.reindex(Items);
 ```
 
+## exportTokensAsFile()
+
+```typescript
+exportTokensAsFile(
+  item: Record<string, AttributeValue>,
+  stream: WriteStream,
+  resultMap?: Map<string, number>,
+  metadata?: boolean
+): Promise<{ inserted: number; resultMap: Map<string, number> }>
+```
+
+Exports tokens for a single document to a file stream in JSON Lines format.
+
+The exported file can be uploaded to an S3 bucket and imported into DynamoDB using the [Import from S3](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/S3DataImport.HowItWorks.html) feature. This is particularly useful for initial bulk loading of large datasets.
+
+### Parameters
+
+- **item** (`Record<string, AttributeValue>`) - DynamoDB item to tokenize
+- **stream** (`WriteStream`) - Node.js write stream to output tokens
+- **resultMap** (`Map<string, number>`, optional) - Map to accumulate token counts per attribute (default: `new Map()`)
+- **metadata** (`boolean`, optional) - Include metadata record in output (default: `true`)
+
+### Returns
+
+```typescript
+interface ExportResult {
+  inserted: number;               // Number of unique tokens exported
+  resultMap: Map<string, number>; // Accumulated token counts per attribute
+}
+```
+
+### Output Format
+
+Each line is a JSON object with `Item` property containing token data:
+```json
+{"Item":{"p":{"S":"title;machine"},"s":{"B":"AAIAAAAACQ=="},"k":{"S":"Sid123"},"h":{"B":"AA=="}}}
+{"Item":{"p":{"S":"_"},"s":{"B":"AA=="},"tc:title":{"N":"1"},"dc":{"N":"1"}}}
+```
+
+### Example
+
+```typescript
+import { createWriteStream } from 'node:fs';
+
+const stream = createWriteStream('tokens.jsonl');
+
+// Export tokens for multiple items
+await dynamosearch.exportTokensAsFile(items, stream);
+
+stream.end();
+```
+
+### Use Cases
+
+- **Bulk Indexing**: Pre-generate token files for offline processing
+- **Index Snapshots**: Create backups of tokenized data
+- **Custom Workflows**: Integrate with ETL pipelines or data validation tools
+
+::: tip
+Set `metadata: false` when processing multiple items, then manually write a single metadata record at the end to avoid duplicate metadata entries.
+:::
+
 ## getMetadata()
 
 ```typescript

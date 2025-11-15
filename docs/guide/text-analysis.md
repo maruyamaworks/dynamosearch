@@ -63,14 +63,14 @@ const tokens = analyzer.analyze('product-123');
 - Tokenizer: `KeywordTokenizer`
 - Filters: None
 
-### JapaneseAnalyzer (Plugin)
+### KuromojiAnalyzer (Plugin)
 
 For Japanese text, use the kuromoji plugin:
 
 ```typescript
-import JapaneseAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/JapaneseAnalyzer.js';
+import KuromojiAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/KuromojiAnalyzer.js';
 
-const analyzer = await JapaneseAnalyzer.getInstance();
+const analyzer = await KuromojiAnalyzer.getInstance();
 const tokens = analyzer.analyze('すもももももももものうち');
 // [
 //   { text: 'すもも' },
@@ -243,16 +243,6 @@ class EnglishAnalyzer extends Analyzer {
 }
 ```
 
-## Choosing an Analyzer
-
-| Use Case | Recommended Analyzer |
-|----------|---------------------|
-| English text | `StandardAnalyzer` |
-| Japanese text | `JapaneseAnalyzer` (plugin) |
-| Exact matching (IDs, categories) | `KeywordAnalyzer` |
-| Partial matching | Custom with `NGramTokenizer` |
-| File paths | Custom with `PathHierarchyTokenizer` |
-
 ## Per-Attribute Analyzers
 
 Different fields can use different analyzers:
@@ -273,14 +263,4 @@ const dynamosearch = new DynamoSearch({
   ],
   keys: [{ name: 'id', type: 'HASH' }]
 });
-```
-
-## Testing Your Analyzer
-
-Test your analyzer to ensure it produces expected tokens:
-
-```typescript
-const analyzer = await MyAnalyzer.getInstance();
-const tokens = analyzer.analyze('Your test text here');
-console.log(tokens);
 ```
