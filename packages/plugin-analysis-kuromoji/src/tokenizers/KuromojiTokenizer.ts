@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
-import kuromoji, { type IpadicFeatures, type Tokenizer, type TokenizerBuilderOption } from 'kuromoji';
+import Tokenizer from 'dynamosearch/tokenizers/Tokenizer.js';
+import kuromoji, { type IpadicFeatures, type TokenizerBuilderOption } from 'kuromoji';
 
 export interface KuromojiTokenizerOptions extends TokenizerBuilderOption {
   discardPunctuation: boolean;
@@ -13,16 +14,17 @@ const isPunctuation = (str: string) => {
   return /^[-_=+~!@#$%^&*(){}[\]|\\:;"'`<>,.?/\s]*$/.test(str);
 };
 
-class KuromojiTokenizer {
+class KuromojiTokenizer extends Tokenizer {
   discardPunctuation: boolean;
-  tokenizer: Tokenizer<IpadicFeatures>;
+  tokenizer: kuromoji.Tokenizer<IpadicFeatures>;
 
-  constructor({ discardPunctuation, tokenizer }: { discardPunctuation: boolean; tokenizer: Tokenizer<IpadicFeatures> }) {
+  constructor({ discardPunctuation, tokenizer }: { discardPunctuation: boolean; tokenizer: kuromoji.Tokenizer<IpadicFeatures> }) {
+    super();
     this.discardPunctuation = discardPunctuation;
     this.tokenizer = tokenizer;
   }
 
-  static async getInstance(options?: Partial<KuromojiTokenizerOptions>) {
+  static override async getInstance(options?: Partial<KuromojiTokenizerOptions>) {
     return new Promise<KuromojiTokenizer>((resolve, reject) => {
       const builder = kuromoji.builder({
         dicPath: fileURLToPath(import.meta.resolve(options?.dicPath ?? 'kuromoji/dict')),

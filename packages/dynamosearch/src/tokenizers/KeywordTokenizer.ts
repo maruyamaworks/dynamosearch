@@ -5,7 +5,7 @@ class KeywordTokenizer extends Tokenizer {
     super();
   }
 
-  static async getInstance() {
+  static override async getInstance() {
     return new KeywordTokenizer();
   }
 

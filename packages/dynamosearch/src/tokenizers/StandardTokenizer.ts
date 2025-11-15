@@ -13,7 +13,7 @@ class StandardTokenizer extends Tokenizer {
     this.maxTokenLength = maxTokenLength;
   }
 
-  static async getInstance(options?: Partial<StandardTokenizerOptions>) {
+  static override async getInstance(options?: Partial<StandardTokenizerOptions>) {
     return new StandardTokenizer({
       maxTokenLength: options?.maxTokenLength ?? 255,
     });

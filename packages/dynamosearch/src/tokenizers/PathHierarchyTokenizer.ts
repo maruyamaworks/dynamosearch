@@ -12,7 +12,7 @@ class PathHierarchyTokenizer extends Tokenizer {
     this.delimiter = delimiter;
   }
 
-  static async getInstance(options?: Partial<PathHierarchyTokenizerOptions>) {
+  static override async getInstance(options?: Partial<PathHierarchyTokenizerOptions>) {
     return new PathHierarchyTokenizer({
       delimiter: options?.delimiter ?? '/',
     });

@@ -22,7 +22,6 @@ export interface Attribute {
   name: string;
   analyzer: Analyzer;
   shortName?: string;
-  boost?: number;
 }
 
 export interface Key {
@@ -102,24 +101,24 @@ const extractStringValues = (value: AWSLambda.AttributeValue): string[] => {
 };
 
 class DynamoSearch {
-  client: DynamoDBClient;
-  indexTableName: string;
-  attributes: Attribute[];
-  partitionKeyName: string;
-  sortKeyName?: string;
+  private client: DynamoDBClient;
+  private indexTableName: string;
+  private attributes: Attribute[];
+  private partitionKeyName: string;
+  private sortKeyName?: string;
 
-  static INDEX_KEYS = 'keys-index';
-  static INDEX_HASH = 'hash-index';
+  static readonly INDEX_KEYS = 'keys-index';
+  static readonly INDEX_HASH = 'hash-index';
 
-  static ATTR_PK = 'p';
-  static ATTR_SK = 's';
-  static ATTR_KEYS = 'k';
-  static ATTR_HASH = 'h';
+  static readonly ATTR_PK = 'p';
+  static readonly ATTR_SK = 's';
+  static readonly ATTR_KEYS = 'k';
+  static readonly ATTR_HASH = 'h';
 
-  static ATTR_META_DOCUMENT_COUNT = 'dc';
-  static ATTR_META_TOKEN_COUNT = 'tc';
+  static readonly ATTR_META_DOCUMENT_COUNT = 'dc';
+  static readonly ATTR_META_TOKEN_COUNT = 'tc';
 
-  static META_KEY = {
+  static readonly META_KEY = {
     [DynamoSearch.ATTR_PK]: { S: '_' },
     [DynamoSearch.ATTR_SK]: { B: new Uint8Array([0]) },
   };
@@ -360,7 +359,7 @@ class DynamoSearch {
   }
 
   async search(query: string, { attributes, maxItems = 100, minScore = 0, bm25: { k1 = 1.2, b = 0.75 } = {} }: SearchOptions = {}) {
-    const _attributes = attributes?.map((attributeName) => {
+    const _attributes: (Attribute & { boost?: number })[] = attributes?.map((attributeName) => {
       const attribute = this.attributes.find(attr => attr.name === attributeName.split('^')[0]);
       const boost = parseFloat(attributeName.split('^')[1] || '1');
       if (!attribute) {

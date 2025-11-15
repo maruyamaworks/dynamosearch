@@ -15,7 +15,7 @@ class NGramTokenizer extends Tokenizer {
     this.maxGram = maxGram;
   }
 
-  static async getInstance(options?: Partial<NGramTokenizerOptions>) {
+  static override async getInstance(options?: Partial<NGramTokenizerOptions>) {
     return new NGramTokenizer({
       minGram: options?.minGram ?? 1,
       maxGram: options?.maxGram ?? 2,

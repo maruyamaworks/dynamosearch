@@ -3,7 +3,7 @@ import LowerCaseFilter from '../filters/LowerCaseFilter.js';
 import Analyzer from './Analyzer.js';
 
 class StandardAnalyzer extends Analyzer {
-  static async getInstance() {
+  static override async getInstance() {
     return new StandardAnalyzer({
       tokenizer: await StandardTokenizer.getInstance(),
       filters: [

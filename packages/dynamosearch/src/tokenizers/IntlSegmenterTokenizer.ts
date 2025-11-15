@@ -17,7 +17,7 @@ class IntlSegmenterTokenizer extends Tokenizer {
     this.segmenter = segmenter;
   }
 
-  static async getInstance(options?: Partial<IntlSegmenterTokenizerOptions>) {
+  static override async getInstance(options?: Partial<IntlSegmenterTokenizerOptions>) {
     return new IntlSegmenterTokenizer({
       segmenter: new Intl.Segmenter(options?.locales, { granularity: 'word' }),
     });
