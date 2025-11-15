@@ -284,6 +284,7 @@ class DynamoSearch {
 
   async exportTokensAsFile(path: string, item: Record<string, AWSLambda.AttributeValue>, resultMap = new Map<string, number>(), metadata = true) {
     let inserted = 0;
+    let text = '';
     for (let i = 0; i < this.attributes.length; i++) {
       const tokens = new Map<string, number>();
       const attributeValues = extractStringValues(item[this.attributes[i].name]);
@@ -305,7 +306,7 @@ class DynamoSearch {
           [DynamoSearch.ATTR_KEYS]: { S: encodedKeys },
           [DynamoSearch.ATTR_HASH]: { B: hash.subarray(0, 1).toString('base64') },
         };
-        await appendFile(path, JSON.stringify({ Item: data }) + '\n');
+        text += JSON.stringify({ Item: data }) + '\n';
       }
       inserted += tokens.size;
     }
@@ -319,8 +320,9 @@ class DynamoSearch {
           return [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:${shortName}`, { N: value.toString() }];
         })),
       };
-      await appendFile(path, JSON.stringify({ Item: data }) + '\n');
+      text += JSON.stringify({ Item: data }) + '\n';
     }
+    await appendFile(path, text);
 
     return { inserted, resultMap };
   }
