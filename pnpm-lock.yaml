@@ -36,6 +36,22 @@ importers:
         specifier: ^3.5.24
         version: 3.5.24(typescript@5.9.3)
 
+  examples/amazon-esci-benchmark:
+    dependencies:
+      '@dynamosearch/plugin-analysis-kuromoji':
+        specifier: ^0.2.1
+        version: 0.2.1
+      dynamosearch:
+        specifier: ^0.2.7
+        version: 0.2.7
+      hyparquet:
+        specifier: ^1.20.2
+        version: 1.20.2
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.0
+        version: 24.10.1
+
   examples/serverless-api:
     dependencies:
       '@aws-sdk/client-dynamodb':
@@ -359,6 +375,9 @@ packages:
         optional: true
       search-insights:
         optional: true
+
+  '@dynamosearch/plugin-analysis-kuromoji@0.2.1':
+    resolution: {integrity: sha512-p1Pgi3F6iuChJLFkoIIwJSxXDpZg+5pHNnK5I7lGQxcbAKRA8IfOKj10BKgaruuJhzaKelBAuvz/KhQmJjcg8Q==}
 
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}
@@ -1688,6 +1707,9 @@ packages:
   dynamosearch@0.2.3:
     resolution: {integrity: sha512-RV5JjjiwMUooFdXeqzPaSy+K1bHgf3/+ac1fAH9658344UpheXt0NaFZ3H9IGraZaGEmnPnmMHzVEkMaSggURA==}
 
+  dynamosearch@0.2.7:
+    resolution: {integrity: sha512-fhKjFTUSDYWYVMxM4qioqBjOZjVWbb+1N0Ofz6bqu/0wds6TF6w5Iu5HnJf1b7rwcB4PXNJeDtMSBsVKH/OZoQ==}
+
   emoji-regex-xs@1.0.0:
     resolution: {integrity: sha512-LRlerrMYoIDrT6jgpeZ2YYl/L8EulRTt5hQcYjy5AInh7HWXKimpqx68aknBFpGL2+/IcogTcaydJEgaTmOpDg==}
 
@@ -1772,6 +1794,9 @@ packages:
 
   html-void-elements@3.0.0:
     resolution: {integrity: sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg==}
+
+  hyparquet@1.20.2:
+    resolution: {integrity: sha512-aFTpoe/ufVxb5f3PRCWBXZgKhUFKfcueGq31bGn2W1Qx7sLm45UJeHovwQhtTykL8AMhKEgNsgaKbOZcvFVtoA==}
 
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
@@ -2823,6 +2848,13 @@ snapshots:
       search-insights: 2.17.3
     transitivePeerDependencies:
       - '@algolia/client-search'
+
+  '@dynamosearch/plugin-analysis-kuromoji@0.2.1':
+    dependencies:
+      dynamosearch: 0.2.7
+      kuromoji: 0.1.2
+    transitivePeerDependencies:
+      - aws-crt
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true
@@ -4099,6 +4131,12 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
+  dynamosearch@0.2.7:
+    dependencies:
+      '@aws-sdk/client-dynamodb': 3.929.0
+    transitivePeerDependencies:
+      - aws-crt
+
   emoji-regex-xs@1.0.0: {}
 
   entities@4.5.0: {}
@@ -4243,6 +4281,8 @@ snapshots:
   html-escaper@2.0.2: {}
 
   html-void-elements@3.0.0: {}
+
+  hyparquet@1.20.2: {}
 
   iconv-lite@0.6.3:
     dependencies:
