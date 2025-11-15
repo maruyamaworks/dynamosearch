@@ -61,23 +61,6 @@ for (let i = 0; i < items.length; i += BATCH_SIZE) {
 console.log('Reindex complete!');
 ```
 
-### With Progress Tracking
-
-```typescript
-import { ProgressBar } from 'some-progress-library';
-
-const bar = new ProgressBar(':bar :current/:total (:percent) :etas', {
-  total: items.length,
-  width: 40
-});
-
-for (let i = 0; i < items.length; i += BATCH_SIZE) {
-  const batch = items.slice(i, i + BATCH_SIZE);
-  await dynamosearch.reindex(batch);
-  bar.tick(batch.length);
-}
-```
-
 ## Partial Reindex
 
 Reindex specific documents based on criteria.
@@ -361,38 +344,3 @@ async function reindexWithCheckpoint(
 8. **Off-peak hours** - Reindex during low traffic
 9. **Backup first** - Keep old index until validated
 10. **Parallel processing** - Speed up with concurrency
-
-## Monitoring Reindex
-
-### CloudWatch Metrics
-
-```typescript
-import { CloudWatchClient, PutMetricDataCommand } from '@aws-sdk/client-cloudwatch';
-
-const cloudwatch = new CloudWatchClient({});
-
-await cloudwatch.send(new PutMetricDataCommand({
-  Namespace: 'DynamoSearch/Reindex',
-  MetricData: [{
-    MetricName: 'ItemsProcessed',
-    Value: batchSize,
-    Unit: 'Count',
-    Timestamp: new Date()
-  }]
-}));
-```
-
-### Progress Notifications
-
-```typescript
-import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
-
-const sns = new SNSClient({});
-
-if (totalProcessed % 10000 === 0) {
-  await sns.send(new PublishCommand({
-    TopicArn: 'arn:aws:sns:region:account:reindex-progress',
-    Message: `Reindex progress: ${totalProcessed} items processed`
-  }));
-}
-```

@@ -105,13 +105,13 @@ const dynamosearch = new DynamoSearch({
   indexTableName: 'articles-index',
 
   /**
-   * Attributes to be indexed for full-text search.
+   * Attributes of the source table to be indexed for full-text search.
    * Specify the attribute name and the analyzer to use for each attribute.
    * Short names are optional but highly recommended to save your costs.
    */
   attributes: [
     { name: 'title', analyzer, shortName: 't' },
-    { name: 'content', analyzer, shortName: 'd' },
+    { name: 'content', analyzer, shortName: 'c' },
   ],
 
   /**
@@ -407,3 +407,52 @@ export AWS_SECRET_ACCESS_KEY=your-secret-key
 ```
 
 Or use IAM roles when running on AWS Lambda, EC2, or ECS.
+
+## Required IAM Permissions
+
+Your application needs the following IAM permissions to use DynamoSearch:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DescribeTable"
+      ],
+      "Resource": "arn:aws:dynamodb:*:*:table/articles-index"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:Query",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:*:*:table/articles-index",
+        "arn:aws:dynamodb:*:*:table/articles-index/index/keys-index",
+        "arn:aws:dynamodb:*:*:table/articles-index/index/hash-index"
+      ]
+    }
+  ]
+}
+```
+
+For Lambda functions processing DynamoDB Streams, also add:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "dynamodb:GetRecords",
+    "dynamodb:GetShardIterator",
+    "dynamodb:DescribeStream",
+    "dynamodb:ListStreams"
+  ],
+  "Resource": "arn:aws:dynamodb:*:*:table/articles/stream/*"
+}
+```

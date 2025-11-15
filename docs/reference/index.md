@@ -16,6 +16,7 @@ Creates a new DynamoSearch instance.
   - **indexTableName** (`string`) - Name of the search index table
   - **attributes** (`Attribute[]`) - Searchable attributes configuration
   - **keys** (`Key[]`) - Primary key structure from source table
+  - **dynamoDBClientConfig** (`DynamoDBClientConfig`, optional) - AWS SDK DynamoDB client configuration
 
 ### Example
 
@@ -28,12 +29,12 @@ const analyzer = await StandardAnalyzer.getInstance();
 const dynamosearch = new DynamoSearch({
   indexTableName: 'my-search-index',
   attributes: [
-    { name: 'title', analyzer, shortName: 't', boost: 2 },
-    { name: 'body', analyzer, shortName: 'b' }
+    { name: 'title', analyzer, shortName: 't' },
+    { name: 'body', analyzer, shortName: 'b' },
   ],
   keys: [
-    { name: 'id', type: 'HASH' }
-  ]
+    { name: 'id', type: 'HASH' },
+  ],
 });
 ```
 
@@ -43,8 +44,7 @@ const dynamosearch = new DynamoSearch({
 interface Attribute {
   name: string;        // Field name in DynamoDB table
   analyzer: Analyzer;  // Text analyzer to use
-  shortName?: string;  // Optional short name for storage optimization
-  boost?: number;      // Optional default boost factor
+  shortName?: string;  // Optional short name for storage optimization (recommended)
 }
 ```
 
@@ -69,7 +69,11 @@ Creates the search index table with required structure and indexes.
 
 - **options** (optional)
   - **ifNotExists** (`boolean`) - Skip creation if table exists (default: `false`)
-  - **tableProperties** (`Partial<CreateTableCommandInput>`) - Custom table properties
+  - **tableProperties** (`Partial<CreateTableCommandInput>`) - Custom table properties. You can specify the same parameters available in the DynamoDB [CreateTable](https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_CreateTable.html) API, such as `BillingMode`, `ProvisionedThroughput`, and `Tags`.
+
+::: warning
+Avoid calling `createIndexTable()` in your application logic on every requests. Creating tables involves API calls that add latency and may hit rate limits. Run `createIndexTable()` once during environment setup (e.g., deployment scripts, infrastructure provisioning).
+:::
 
 ### Example
 
@@ -87,12 +91,12 @@ await dynamosearch.createIndexTable({
     BillingMode: 'PROVISIONED',
     ProvisionedThroughput: {
       ReadCapacityUnits: 10,
-      WriteCapacityUnits: 5
+      WriteCapacityUnits: 5,
     },
     Tags: [
-      { Key: 'Environment', Value: 'production' }
-    ]
-  }
+      { Key: 'Environment', Value: 'production' },
+    ],
+  },
 });
 ```
 
@@ -131,6 +135,10 @@ Processes DynamoDB Stream records to maintain the search index.
 
 - **records** (`DynamoDBRecord[]`) - Array of DynamoDB Stream records
 
+::: tip
+The source DynamoDB table must have Streams enabled with `StreamViewType` set to either `NEW_IMAGE` or `NEW_AND_OLD_IMAGES`. This ensures that the stream records contain the document data needed for indexing.
+:::
+
 ### Example
 
 ```typescript
@@ -140,12 +148,6 @@ export const handler: DynamoDBStreamHandler = async (event) => {
   await dynamosearch.processRecords(event.Records);
 };
 ```
-
-### Supported Events
-
-- **INSERT**: Indexes new document
-- **MODIFY**: Updates index (deletes old tokens, inserts new tokens)
-- **REMOVE**: Removes document from index
 
 ## search()
 
@@ -201,7 +203,7 @@ console.log(results.items);
 
 ```typescript
 const results = await dynamosearch.search('machine learning', {
-  attributes: ['title^3', 'abstract^2', 'body']
+  attributes: ['title^3', 'abstract^2', 'body'],
 });
 ```
 
@@ -210,7 +212,7 @@ const results = await dynamosearch.search('machine learning', {
 ```typescript
 const results = await dynamosearch.search('machine learning', {
   minScore: 1.0,
-  maxItems: 10
+  maxItems: 10,
 });
 ```
 
@@ -220,8 +222,8 @@ const results = await dynamosearch.search('machine learning', {
 const results = await dynamosearch.search('machine learning', {
   bm25: {
     k1: 1.5,  // Higher k1: more weight to term frequency
-    b: 0.9    // Higher b: stronger length normalization
-  }
+    b: 0.9,   // Higher b: stronger length normalization
+  },
 });
 ```
 
@@ -231,6 +233,12 @@ const results = await dynamosearch.search('machine learning', {
 const results = await dynamosearch.search('query');
 console.log('Consumed capacity:', results.consumedCapacity.capacityUnits);
 ```
+
+### Performance Notes
+
+- Each unique token in the query generates one DynamoDB Query operation
+- Consumed capacity scales with number of unique tokens × number of attributes searched
+- Results are sorted in-memory after retrieval (top-k selection)
 
 ## reindex()
 
@@ -253,22 +261,11 @@ const client = new DynamoDBClient({});
 
 // Scan all items
 const { Items } = await client.send(new ScanCommand({
-  TableName: 'articles'
+  TableName: 'articles',
 }));
 
-// Reindex in batches
-const BATCH_SIZE = 25;
-for (let i = 0; i < Items.length; i += BATCH_SIZE) {
-  await dynamosearch.reindex(Items.slice(i, i + BATCH_SIZE));
-  console.log(`Reindexed ${Math.min(i + BATCH_SIZE, Items.length)}/${Items.length}`);
-}
+await dynamosearch.reindex(Items);
 ```
-
-### Notes
-
-- Internally simulates `MODIFY` events
-- Handles binary attributes (converts to base64)
-- Processes in batches of 25 (DynamoDB limit)
 
 ## getMetadata()
 
@@ -294,7 +291,7 @@ const metadata = await dynamosearch.getMetadata();
 
 console.log('Total documents:', metadata.docCount);
 console.log('Token counts:', metadata.tokenCount);
-// Token counts: Map {
+// Token counts: Map(2) {
 //   'title' => 5432,
 //   'body' => 123456
 // }
@@ -314,7 +311,7 @@ for (const [attr, totalTokens] of metadata.tokenCount) {
 static INDEX_KEYS: string = 'keys-index'
 ```
 
-Name of the GSI used for document key lookups.
+Name of the GSI used for document key lookups during deletion/updates.
 
 ### INDEX_HASH
 
@@ -322,7 +319,7 @@ Name of the GSI used for document key lookups.
 static INDEX_HASH: string = 'hash-index'
 ```
 
-Name of the GSI used for efficient token queries.
+Name of the GSI used for efficient token queries (reserved for future use).
 
 ### ATTR_PK
 
@@ -354,7 +351,7 @@ Document keys attribute name. Encoded representation of source table keys.
 static ATTR_HASH: string = 'h'
 ```
 
-Key hash attribute name. First byte of MD5 hash.
+Key hash attribute name. First byte of MD5 hash of encoded keys (used in hash-index GSI).
 
 ### ATTR_META_DOCUMENT_COUNT
 
@@ -370,7 +367,7 @@ Metadata attribute for document count.
 static ATTR_META_TOKEN_COUNT: string = 'tc'
 ```
 
-Metadata attribute prefix for token counts.
+Metadata attribute prefix for token counts. Full attribute names follow pattern `tc:{shortName}`.
 
 ## Instance Properties
 

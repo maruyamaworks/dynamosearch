@@ -1,14 +1,19 @@
-import { defineConfig } from 'vitepress';
+import { withMermaid } from 'vitepress-plugin-mermaid';
 
-export default defineConfig({
+export default withMermaid({
   base: '/dynamosearch/',
   title: 'DynamoSearch',
   description: 'Full-text search by DynamoDB, for DynamoDB',
+  vite: {
+    optimizeDeps: {
+      include: ['mermaid'],
+    },
+  },
   themeConfig: {
     logo: '/logo.svg',
     nav: [
       { text: 'Guide', link: '/guide/' },
-      { text: 'API', link: '/api/' },
+      { text: 'Reference', link: '/reference/' },
       {
         text: 'v0.2.4',
         items: [
@@ -24,35 +29,50 @@ export default defineConfig({
         {
           text: 'Introduction',
           items: [
-            { text: 'Getting Started', link: '/guide/' },
             { text: 'Why DynamoSearch', link: '/guide/why' },
+            { text: 'Getting Started', link: '/guide/' },
           ],
         },
         {
           text: 'Core Concepts',
           items: [
             { text: 'Text Analysis', link: '/guide/text-analysis' },
-            { text: 'BM25 Ranking', link: '/guide/bm25-ranking' },
-            { text: 'Index Management', link: '/guide/index-management' },
+            { text: 'Custom Analyzers', link: '/guide/custom-analyzers' },
           ],
         },
         {
           text: 'Advanced',
           items: [
-            { text: 'Custom Analyzers', link: '/guide/custom-analyzers' },
             { text: 'AWS Lambda Integration', link: '/guide/lambda-integration' },
+            { text: 'Cost Optimization', link: '/guide/cost-optimization' },
+            { text: 'Index Table', link: '/guide/index-table' },
             { text: 'Reindexing', link: '/guide/reindexing' },
           ],
         },
       ],
-      '/api/': [
+      '/reference/': [
         {
-          text: 'API Reference',
+          text: 'Core API',
           items: [
-            { text: 'DynamoSearch', link: '/api/dynamosearch' },
-            { text: 'Analyzers', link: '/api/analyzers' },
-            { text: 'Tokenizers', link: '/api/tokenizers' },
-            { text: 'Filters', link: '/api/filters' },
+            { text: 'DynamoSearch', link: '/reference/' },
+            { text: 'Analyzers', link: '/reference/analyzers' },
+            { text: 'Tokenizers', link: '/reference/tokenizers' },
+            { text: 'Character Filters', link: '/reference/char-filters' },
+            { text: 'Token Filters', link: '/reference/filters' },
+          ],
+        },
+        {
+          text: 'Plugins',
+          items: [
+            {
+              text: '@dynamosearch/plugin-analysis-kuromoji',
+              link: '/reference/plugins/analysis-kuromoji/',
+              items: [
+                { text: 'Analyzers', link: '/reference/plugins/analysis-kuromoji/analyzers' },
+                { text: 'Tokenizers', link: '/reference/plugins/analysis-kuromoji/tokenizers' },
+                { text: 'Token Filters', link: '/reference/plugins/analysis-kuromoji/filters' },
+              ],
+            },
           ],
         },
       ],

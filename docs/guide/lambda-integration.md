@@ -1,410 +1,249 @@
 # AWS Lambda Integration
 
-Deploy DynamoSearch to production using AWS Lambda and DynamoDB Streams for automatic indexing.
+This guide shows how to deploy DynamoSearch to AWS Lambda using the provided SAM (Serverless Application Model) example.
 
-## Architecture Overview
+## Overview
 
-```mermaid
-graph LR
-    A[DynamoDB Table] -->|Stream| B[Lambda: Indexer]
-    B -->|Write Tokens| C[Search Index]
-    D[API Gateway] -->|Search Request| E[Lambda: Search]
-    E -->|Query| C
-    E -->|Results| F[Client]
-```
+The example in `examples/serverless-api` demonstrates a complete serverless search application with:
 
-## Lambda Function: Stream Processor
+- **DocumentsTable**: Source DynamoDB table with Streams enabled
+- **SearchIndexTable**: DynamoDB table storing the search index
+- **IndexerFunction**: Lambda function that processes Stream events and updates the index
+- **SearchFunction**: Lambda function that handles search API requests via API Gateway
+- **AddDocumentFunction**: Lambda function that adds documents to the source table
 
-This function processes DynamoDB Stream events to maintain the search index:
+## Prerequisites
 
-```typescript
-// indexer.ts
-import type { DynamoDBStreamHandler } from 'aws-lambda';
-import DynamoSearch from 'dynamosearch';
-import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer.js';
+- [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) installed
+- [Node.js 20+](https://nodejs.org/) installed
+- AWS credentials configured (`aws configure`)
 
-const analyzer = await StandardAnalyzer.getInstance();
-const dynamosearch = new DynamoSearch({
-  indexTableName: process.env.INDEX_TABLE_NAME!,
-  attributes: [
-    { name: 'title', analyzer },
-    { name: 'body', analyzer }
-  ],
-  keys: [
-    { name: 'id', type: 'HASH' }
-  ]
-});
+## Quick Start
 
-export const handler: DynamoDBStreamHandler = async (event) => {
-  await dynamosearch.processRecords(event.Records);
-};
-```
-
-## Lambda Function: Search API
-
-This function handles search requests:
-
-```typescript
-// search.ts
-import type { APIGatewayProxyHandler } from 'aws-lambda';
-import DynamoSearch from 'dynamosearch';
-import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer.js';
-
-const analyzer = await StandardAnalyzer.getInstance();
-const dynamosearch = new DynamoSearch({
-  indexTableName: process.env.INDEX_TABLE_NAME!,
-  attributes: [
-    { name: 'title', analyzer },
-    { name: 'body', analyzer }
-  ],
-  keys: [
-    { name: 'id', type: 'HASH' }
-  ]
-});
-
-export const handler: APIGatewayProxyHandler = async (event) => {
-  const query = event.queryStringParameters?.q || '';
-  const maxItems = parseInt(event.queryStringParameters?.limit || '20');
-
-  const results = await dynamosearch.search(query, {
-    attributes: ['title^2', 'body'],
-    maxItems,
-    minScore: 0.5
-  });
-
-  return {
-    statusCode: 200,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
-    },
-    body: JSON.stringify({
-      query,
-      total: results.items.length,
-      items: results.items
-    })
-  };
-};
-```
-
-## AWS SAM Template
-
-Deploy using AWS SAM (Serverless Application Model):
-
-```yaml
-# template.yaml
-AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
-Description: DynamoSearch Application
-
-Globals:
-  Function:
-    Timeout: 30
-    Runtime: nodejs22.x
-    MemorySize: 512
-    Architectures:
-      - arm64
-    Environment:
-      Variables:
-        INDEX_TABLE_NAME: !Ref SearchIndexTable
-
-Resources:
-  # Source DynamoDB table with Stream enabled
-  DocumentsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub ${AWS::StackName}-documents
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-      StreamSpecification:
-        StreamEnabled: true
-        StreamViewType: NEW_AND_OLD_IMAGES
-
-  # Search index table
-  SearchIndexTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub ${AWS::StackName}-search-index
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: p
-          AttributeType: S
-        - AttributeName: s
-          AttributeType: B
-        - AttributeName: k
-          AttributeType: S
-        - AttributeName: h
-          AttributeType: B
-      KeySchema:
-        - AttributeName: p
-          KeyType: HASH
-        - AttributeName: s
-          KeyType: RANGE
-      GlobalSecondaryIndexes:
-        - IndexName: keys-index
-          KeySchema:
-            - AttributeName: k
-              KeyType: HASH
-          Projection:
-            ProjectionType: KEYS_ONLY
-        - IndexName: hash-index
-          KeySchema:
-            - AttributeName: p
-              KeyType: HASH
-            - AttributeName: h
-              KeyType: RANGE
-          Projection:
-            ProjectionType: KEYS_ONLY
-
-  # Lambda function to process DynamoDB Stream
-  IndexerFunction:
-    Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        Minify: true
-        Target: es2020
-        Sourcemap: true
-        EntryPoints:
-          - src/indexer.ts
-        External:
-          - '@aws-sdk/*'
-    Properties:
-      FunctionName: !Sub ${AWS::StackName}-indexer
-      CodeUri: ./
-      Handler: src/indexer.handler
-      Events:
-        Stream:
-          Type: DynamoDB
-          Properties:
-            Stream: !GetAtt DocumentsTable.StreamArn
-            StartingPosition: LATEST
-            BatchSize: 100
-            MaximumBatchingWindowInSeconds: 5
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref SearchIndexTable
-        - DynamoDBStreamReadPolicy:
-            TableName: !Ref DocumentsTable
-            StreamName: !Select [3, !Split ["/", !GetAtt DocumentsTable.StreamArn]]
-
-  # Lambda function for search API
-  SearchFunction:
-    Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        Minify: true
-        Target: es2020
-        Sourcemap: true
-        EntryPoints:
-          - src/search.ts
-        External:
-          - '@aws-sdk/*'
-    Properties:
-      FunctionName: !Sub ${AWS::StackName}-search
-      CodeUri: ./
-      Handler: src/search.handler
-      Events:
-        SearchApi:
-          Type: Api
-          Properties:
-            Path: /search
-            Method: get
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref SearchIndexTable
-
-Outputs:
-  SearchUrl:
-    Description: URL to search documents
-    Value: !Sub https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/search
-```
-
-## Deployment
-
-### 1. Install SAM CLI
+### 1. Clone and Navigate to the Example
 
 ```bash
-# macOS
-brew install aws-sam-cli
-
-# Windows
-choco install aws-sam-cli
-
-# Linux
-pip install aws-sam-cli
+cd examples/serverless-api
 ```
 
-### 2. Build
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Build the Application
 
 ```bash
 sam build
 ```
 
-### 3. Deploy
+This compiles the TypeScript Lambda functions using esbuild.
+
+### 4. Deploy to AWS
 
 ```bash
 sam deploy --guided
 ```
 
-Follow the prompts:
-- Stack Name: `dynamosearch-app`
-- AWS Region: `us-east-1`
-- Confirm changes before deploy: `Y`
-- Allow SAM CLI IAM role creation: `Y`
-- Save arguments to samconfig.toml: `Y`
+During the guided deployment:
+- **Stack name**: Enter a name (e.g., `dynamosearch-demo`)
+- **AWS Region**: Select your preferred region
+- **Confirm changes before deploy**: `Y`
+- **Allow SAM CLI IAM role creation**: `Y`
+- **Save arguments to samconfig.toml**: `Y`
 
-### 4. Test
+The deployment creates:
+- Two DynamoDB tables (source + index)
+- Three Lambda functions
+- API Gateway with two endpoints
+- IAM roles and policies
+
+### 5. Get the API Endpoints
+
+After deployment, note the output URLs:
+
+```
+Outputs
+-------
+AddDocumentUrl: https://<api-id>.execute-api.<region>.amazonaws.com/Prod/documents
+SearchUrl: https://<api-id>.execute-api.<region>.amazonaws.com/Prod/search
+```
+
+## Usage
+
+### Add Documents
 
 ```bash
-# Get the API endpoint from outputs
-SEARCH_URL=$(aws cloudformation describe-stacks \
-  --stack-name dynamosearch-app \
-  --query 'Stacks[0].Outputs[?OutputKey==`SearchUrl`].OutputValue' \
-  --output text)
-
-# Search
-curl "${SEARCH_URL}?q=machine%20learning&limit=10"
+curl -X POST https://<api-id>.execute-api.<region>.amazonaws.com/Prod/documents \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Introduction to AWS Lambda",
+    "description": "AWS Lambda is a serverless compute service that runs your code in response to events."
+  }'
 ```
 
-## Performance Optimization
+The AddDocumentFunction writes the document to DocumentsTable, which triggers the Stream. The IndexerFunction then processes the Stream event and updates the search index automatically.
 
-### Batching
+### Search Documents
 
-Configure stream batching for better throughput:
-
-```yaml
-Events:
-  Stream:
-    Type: DynamoDB
-    Properties:
-      Stream: !GetAtt DocumentsTable.StreamArn
-      StartingPosition: LATEST
-      BatchSize: 100                        # Process up to 100 records
-      MaximumBatchingWindowInSeconds: 5     # Wait up to 5 seconds
-      MaximumRecordAgeInSeconds: 60         # Discard old records
-      MaximumRetryAttempts: 3               # Retry failed batches
-      ParallelizationFactor: 1              # Process 1 shard at a time
+```bash
+curl "https://<api-id>.execute-api.<region>.amazonaws.com/Prod/search?q=lambda"
 ```
 
-### Memory Configuration
+Response:
 
-Adjust Lambda memory based on workload:
+```json
+{
+  "items": [
+    {
+      "keys": { "id": { "S": "..." } },
+      "score": 2.145
+    }
+  ],
+  "total": 1
+}
+```
+
+## Architecture
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AddAPI as AddDocument API
+    participant DB as DocumentsTable
+    participant Stream as DynamoDB Streams
+    participant Indexer as IndexerFunction
+    participant Index as SearchIndexTable
+    participant SearchAPI as Search API
+
+    Client->>AddAPI: POST /documents
+    AddAPI->>DB: PutItem
+    DB->>Stream: Stream Event
+    Stream->>Indexer: Trigger Lambda
+    Indexer->>Index: Update Index
+
+    Client->>SearchAPI: GET /search?q=...
+    SearchAPI->>Index: Query
+    Index-->>SearchAPI: Results
+    SearchAPI-->>Client: Ranked Results
+```
+
+## Lambda Functions
+
+### IndexerFunction (`src/indexer.ts`)
+
+Processes DynamoDB Stream events:
+
+```typescript
+import DynamoSearch from 'dynamosearch';
+import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer.js';
+import type { DynamoDBStreamHandler } from 'aws-lambda';
+
+export const handler: DynamoDBStreamHandler = async (event) => {
+  const analyzer = await StandardAnalyzer.getInstance();
+  const dynamosearch = new DynamoSearch({
+    indexTableName: process.env.INDEX_TABLE_NAME!,
+    attributes: [
+      { name: 'title', analyzer },
+      { name: 'description', analyzer },
+    ],
+    keys: [
+      { name: 'id', type: 'HASH' },
+    ],
+  });
+  await dynamosearch.processRecords(event.Records);
+};
+```
+
+### SearchFunction (`src/search.ts`)
+
+Handles search API requests:
+
+```typescript
+import DynamoSearch from 'dynamosearch';
+import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer.js';
+import type { APIGatewayProxyHandler } from 'aws-lambda';
+
+export const handler: APIGatewayProxyHandler = async (event) => {
+  const query = event.queryStringParameters?.q;
+
+  const analyzer = await StandardAnalyzer.getInstance();
+  const dynamosearch = new DynamoSearch({
+    indexTableName: process.env.INDEX_TABLE_NAME!,
+    attributes: [
+      { name: 'title', analyzer },
+      { name: 'description', analyzer },
+    ],
+    keys: [
+      { name: 'id', type: 'HASH' },
+    ],
+  });
+
+  const results = await dynamosearch.search(query, {
+    attributes: ['title^2', 'description'], // Boost title 2x
+    maxItems: 20,
+  });
+
+  return {
+    statusCode: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      items: results.items,
+      total: results.items.length,
+    }),
+  };
+};
+```
+
+## SAM Template Configuration
+
+The `template.yaml` includes optimized settings:
+
+### Runtime and Architecture
 
 ```yaml
 Globals:
   Function:
-    MemorySize: 1024  # More memory = faster CPU
+    Runtime: nodejs22.x
+    Architectures:
+      - arm64  # Lower cost, better performance
+    MemorySize: 512
+    Timeout: 30
 ```
 
-Test different memory sizes:
-- 512 MB: Small documents, low volume
-- 1024 MB: Medium documents, medium volume
-- 2048 MB: Large documents, high volume
-
-### Provisioned Concurrency
-
-For consistent low latency:
-
-```yaml
-SearchFunction:
-  Type: AWS::Serverless::Function
-  Properties:
-    # ... other properties
-    ProvisionedConcurrencyConfig:
-      ProvisionedConcurrentExecutions: 5
-```
-
-## Error Handling
-
-### Dead Letter Queue
-
-Capture failed indexing operations:
+### Stream Configuration
 
 ```yaml
 IndexerFunction:
-  Type: AWS::Serverless::Function
-  Properties:
-    # ... other properties
-    DeadLetterQueue:
-      Type: SQS
-      TargetArn: !GetAtt IndexerDLQ.Arn
-
-IndexerDLQ:
-  Type: AWS::SQS::Queue
-  Properties:
-    QueueName: !Sub ${AWS::StackName}-indexer-dlq
-    MessageRetentionPeriod: 1209600  # 14 days
+  Events:
+    Stream:
+      Type: DynamoDB
+      Properties:
+        Stream: !GetAtt DocumentsTable.StreamArn
+        StartingPosition: LATEST
+        BatchSize: 100
+        MaximumBatchingWindowInSeconds: 5
 ```
 
-### CloudWatch Alarms
+- **BatchSize**: Process up to 100 records per invocation
+- **MaximumBatchingWindowInSeconds**: Wait up to 5 seconds to accumulate records
 
-Monitor for errors:
+### IAM Policies
 
 ```yaml
-IndexerErrorAlarm:
-  Type: AWS::CloudWatch::Alarm
-  Properties:
-    AlarmName: !Sub ${AWS::StackName}-indexer-errors
-    MetricName: Errors
-    Namespace: AWS/Lambda
-    Statistic: Sum
-    Period: 300
-    EvaluationPeriods: 1
-    Threshold: 5
-    ComparisonOperator: GreaterThanThreshold
-    Dimensions:
-      - Name: FunctionName
-        Value: !Ref IndexerFunction
+IndexerFunction:
+  Policies:
+    - DynamoDBCrudPolicy:
+        TableName: !Ref SearchIndexTable
+    - DynamoDBStreamReadPolicy:
+        TableName: !Ref DocumentsTable
+
+SearchFunction:
+  Policies:
+    - DynamoDBReadPolicy:
+        TableName: !Ref SearchIndexTable
 ```
-
-## Monitoring
-
-### CloudWatch Logs
-
-View logs:
-
-```bash
-sam logs -n IndexerFunction --tail
-sam logs -n SearchFunction --tail
-```
-
-### Custom Metrics
-
-Publish custom metrics:
-
-```typescript
-import { CloudWatchClient, PutMetricDataCommand } from '@aws-sdk/client-cloudwatch';
-
-const cloudwatch = new CloudWatchClient({});
-
-await cloudwatch.send(new PutMetricDataCommand({
-  Namespace: 'DynamoSearch',
-  MetricData: [{
-    MetricName: 'SearchLatency',
-    Value: duration,
-    Unit: 'Milliseconds',
-    Timestamp: new Date()
-  }]
-}));
-```
-
-## Best Practices
-
-1. **Use ARM architecture** - Lower cost, better performance
-2. **External AWS SDK** - Reduce bundle size
-3. **Enable X-Ray** - Trace requests for debugging
-4. **Set appropriate timeouts** - Indexer: 30s, Search: 10s
-5. **Use environment variables** - Configure without redeployment
-6. **Implement retry logic** - Handle transient failures
-7. **Monitor DLQ** - Alert on failed operations
-8. **Test locally** - Use `sam local` for development
 
 ## Local Development
 
@@ -414,19 +253,123 @@ await cloudwatch.send(new PutMetricDataCommand({
 sam local start-api
 ```
 
-### Invoke Function Locally
+This starts a local API Gateway emulator at `http://127.0.0.1:3000`.
+
+### Test Locally
 
 ```bash
-sam local invoke SearchFunction -e events/search.json
+# Add a document
+curl -X POST http://127.0.0.1:3000/documents \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Test", "description": "Local test"}'
+
+# Search (requires actual DynamoDB tables)
+curl "http://127.0.0.1:3000/search?q=test"
 ```
 
-Create `events/search.json`:
+## Monitoring
 
-```json
-{
-  "queryStringParameters": {
-    "q": "machine learning",
-    "limit": "10"
-  }
-}
+### View Logs
+
+```bash
+sam logs -n IndexerFunction --tail
+sam logs -n SearchFunction --tail
 ```
+
+### CloudWatch Metrics
+
+Monitor in the AWS Console:
+- Lambda invocations and errors
+- DynamoDB read/write capacity
+- API Gateway requests and latency
+
+## Cleanup
+
+Delete all resources:
+
+```bash
+sam delete
+```
+
+Confirm the deletion when prompted. This removes:
+- DynamoDB tables (including all data)
+- Lambda functions
+- API Gateway
+- CloudWatch log groups
+- IAM roles
+
+## Customization
+
+### Modify Searchable Fields
+
+Edit both `src/indexer.ts` and `src/search.ts`:
+
+```typescript
+attributes: [
+  { name: 'title', analyzer, shortName: 't' },
+  { name: 'description', analyzer, shortName: 'd' },
+  { name: 'tags', analyzer, shortName: 'tg' },  // Add new field
+],
+```
+
+### Adjust Field Boosting
+
+In `src/search.ts`:
+
+```typescript
+const results = await dynamosearch.search(query, {
+  attributes: ['title^3', 'description'],  // Boost title 3x instead of 2x
+  maxItems: 20,
+});
+```
+
+### Change Memory/Timeout
+
+In `template.yaml`:
+
+```yaml
+Globals:
+  Function:
+    MemorySize: 1024  # Increase for better performance
+    Timeout: 60       # Increase for large documents
+```
+
+## Best Practices
+
+1. **Use ARM64 architecture** - The template uses ARM64 for better price/performance
+2. **External AWS SDK** - The build excludes `@aws-sdk/*` to reduce bundle size (Lambda runtime provides it)
+3. **Environment variables** - Table names are passed via environment variables for flexibility
+4. **Error handling** - SearchFunction includes try/catch for graceful error responses
+5. **Logging** - Both functions log events for debugging
+
+## Troubleshooting
+
+### Indexer Not Processing Records
+
+Check CloudWatch logs:
+```bash
+sam logs -n IndexerFunction --tail
+```
+
+Common issues:
+- IAM permissions missing
+- Stream not enabled on source table
+- Lambda timeout too short
+
+### Search Returns No Results
+
+1. Verify documents were indexed:
+   - Check CloudWatch logs for IndexerFunction
+   - Query SearchIndexTable directly in AWS Console
+
+2. Check analyzer compatibility:
+   - Both indexer and search must use the same analyzer
+
+3. Verify table name:
+   - Ensure `INDEX_TABLE_NAME` environment variable is correct
+
+## Next Steps
+
+- [Cost Optimization](/guide/cost-optimization) - Reduce DynamoDB costs
+- [Text Analysis](/guide/text-analysis) - Use different analyzers
+- [API Reference](/api/dynamosearch) - Learn advanced search options

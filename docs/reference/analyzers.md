@@ -8,17 +8,6 @@ Analyzers convert text into searchable tokens through a pipeline of character fi
 import Analyzer from 'dynamosearch/analyzers/Analyzer.js';
 ```
 
-### Constructor
-
-```typescript
-new Analyzer(options: AnalyzerConstructorOptions)
-```
-
-**Parameters:**
-- **tokenizer** (`Tokenizer`) - Tokenizer instance
-- **charFilters** (`CharacterFilter[]`, optional) - Array of character filters
-- **filters** (`TokenFilter[]`, optional) - Array of token filters
-
 ### getInstance()
 
 ```typescript
@@ -123,46 +112,6 @@ const tokens = analyzer.analyze('product-123-abc');
 - Status values
 - Enum-like fields
 
-## JapaneseAnalyzer (Plugin)
-
-Japanese text analyzer using Kuromoji morphological analysis.
-
-```typescript
-import JapaneseAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/JapaneseAnalyzer.js';
-```
-
-### Installation
-
-```bash
-npm install @dynamosearch/plugin-analysis-kuromoji
-```
-
-### Pipeline
-
-- **Tokenizer**: `KuromojiTokenizer`
-- **Filters**: `LowerCaseFilter`, `CJKWidthFilter`
-
-### Usage
-
-```typescript
-const analyzer = await JapaneseAnalyzer.getInstance();
-const tokens = analyzer.analyze('東京タワーに行きました');
-// [
-//   { text: '東京' },
-//   { text: 'タワー' },
-//   { text: 'に' },
-//   { text: '行き' },
-//   { text: 'まし' },
-//   { text: 'た' }
-// ]
-```
-
-### Best For
-
-- Japanese text
-- Mixed Japanese/English content
-- Japanese search applications
-
 ## Type Definitions
 
 ### CharacterFilter
@@ -264,24 +213,3 @@ class HtmlAnalyzer extends Analyzer {
   }
 }
 ```
-
-## Analyzer Selection Guide
-
-| Content Type | Recommended Analyzer | Notes |
-|--------------|---------------------|-------|
-| English text | `StandardAnalyzer` | Default choice for Western languages |
-| Japanese text | `JapaneseAnalyzer` | Requires plugin installation |
-| IDs/codes | `KeywordAnalyzer` | Exact matching only |
-| Email addresses | Custom with email tokenizer | Extract email addresses |
-| URLs | Custom with URL tokenizer | Extract and parse URLs |
-| File paths | Custom with `PathHierarchyTokenizer` | Hierarchical matching |
-| Code/camelCase | Custom with camelCase filter | Split camelCase identifiers |
-| Product descriptions | `StandardAnalyzer` with stop words | Remove common words |
-
-## Performance Tips
-
-1. **Reuse analyzer instances** - Create once, use many times
-2. **Avoid expensive operations** - No API calls in filters
-3. **Cache compiled regexes** - Don't recreate patterns
-4. **Keep filters simple** - Complex logic slows indexing
-5. **Test with real data** - Validate performance at scale

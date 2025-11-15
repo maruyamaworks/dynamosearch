@@ -1,35 +1,8 @@
-# Filters
-
-Filters transform text (character filters) or tokens (token filters) during analysis.
-
-## Character Filters
-
-Character filters preprocess raw text before tokenization.
-
-### Type Definition
-
-```typescript
-type CharacterFilter = (str: string) => string;
-```
-
-Character filters are simple functions that transform strings.
-
-### Example
-
-```typescript
-const htmlStripFilter: CharacterFilter = (str) => {
-  return str.replace(/<[^>]*>/g, '');
-};
-
-const result = htmlStripFilter('<p>Hello <strong>World</strong></p>');
-// 'Hello World'
-```
-
-## Token Filters
+# Token Filters
 
 Token filters transform or remove tokens after tokenization.
 
-### Type Definition
+## Type Definition
 
 ```typescript
 type TokenFilter = (tokens: { text: string }[]) => { text: string }[];
@@ -283,72 +256,6 @@ const trimFilter = (): TokenFilter => {
 };
 ```
 
-## Custom Character Filters
-
-### HTML Strip Filter
-
-Remove HTML tags:
-
-```typescript
-const htmlStripFilter: CharacterFilter = (str) => {
-  return str.replace(/<[^>]*>/g, '');
-};
-```
-
-### Pattern Replace Filter
-
-Replace patterns in text:
-
-```typescript
-const patternReplaceFilter = (
-  pattern: RegExp,
-  replacement: string
-): CharacterFilter => {
-  return (str) => str.replace(pattern, replacement);
-};
-
-// Usage: Normalize phone numbers
-const phoneNormalizer = patternReplaceFilter(/[()-\s]/g, '');
-phoneNormalizer('(555) 123-4567');  // '5551234567'
-```
-
-### Mapping Filter
-
-Map characters to replacements:
-
-```typescript
-const mappingFilter = (mappings: Record<string, string>): CharacterFilter => {
-  return (str) => {
-    let result = str;
-    for (const [from, to] of Object.entries(mappings)) {
-      result = result.replaceAll(from, to);
-    }
-    return result;
-  };
-};
-
-// Usage: Normalize special characters
-const specialCharMapper = mappingFilter({
-  '©': '(c)',
-  '®': '(r)',
-  '™': '(tm)',
-  '&': 'and'
-});
-```
-
-### Whitespace Normalizer
-
-Normalize whitespace:
-
-```typescript
-const whitespaceNormalizer: CharacterFilter = (str) => {
-  return str.replace(/\s+/g, ' ').trim();
-};
-
-whitespaceNormalizer('hello    world\n\tfoo');
-// 'hello world foo'
-```
-
 ## Filter Chains
 
 Combine multiple filters:
@@ -376,75 +283,5 @@ class CustomAnalyzer extends Analyzer {
       ]
     });
   }
-}
-```
-
-## Performance Tips
-
-### Avoid Expensive Operations
-
-```typescript
-// ❌ Slow: API calls
-const badFilter: TokenFilter = async (tokens) => {
-  return await Promise.all(tokens.map(async token => ({
-    text: await fetch(`/api/normalize?text=${token.text}`)
-  })));
-};
-
-// ✅ Fast: Local processing
-const goodFilter: TokenFilter = (tokens) => {
-  return tokens.map(token => ({
-    text: token.text.toLowerCase()
-  }));
-};
-```
-
-### Cache Expensive Computations
-
-```typescript
-// ❌ Slow: Recompile regex
-const badFilter: CharacterFilter = (str) => {
-  return str.replace(new RegExp('pattern', 'g'), 'replacement');
-};
-
-// ✅ Fast: Compile once
-const pattern = /pattern/g;
-const goodFilter: CharacterFilter = (str) => {
-  return str.replace(pattern, 'replacement');
-};
-```
-
-### Use Sets for Lookups
-
-```typescript
-// ❌ Slow: Array includes
-const stopWords = ['the', 'a', 'an', ...];
-const badFilter: TokenFilter = (tokens) => {
-  return tokens.filter(t => !stopWords.includes(t.text));
-};
-
-// ✅ Fast: Set lookup
-const stopWordsSet = new Set(['the', 'a', 'an', ...]);
-const goodFilter: TokenFilter = (tokens) => {
-  return tokens.filter(t => !stopWordsSet.has(t.text));
-};
-```
-
-## Testing Filters
-
-```typescript
-const filter = LowerCaseFilter();
-
-const testCases = [
-  [{ text: 'HELLO' }],
-  [{ text: 'World' }],
-  [{ text: 'JavaScript' }]
-];
-
-for (const input of testCases) {
-  const output = filter(input);
-  console.log('Input:', input.map(t => t.text));
-  console.log('Output:', output.map(t => t.text));
-  console.log('---');
 }
 ```
