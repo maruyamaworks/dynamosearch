@@ -10,7 +10,10 @@ export default withMermaid({
     },
   },
   themeConfig: {
-    logo: '/logo.svg',
+    logo: {
+      dark: '/logo-dark.svg',
+      light: '/logo-light.svg',
+    },
     nav: [
       { text: 'Guide', link: '/guide/' },
       { text: 'Reference', link: '/reference/' },
