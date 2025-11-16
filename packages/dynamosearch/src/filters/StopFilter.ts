@@ -1,11 +1,11 @@
 import * as PredefinedStopWords from './stopwords/index.js';
 
-export interface JapaneseStopFilterOptions {
-  /** A pre-defined stop words list like _japanese_ or an array containing a list of stop words. */
+export interface StopFilterOptions {
+  /** A pre-defined stop words list like _english_ or an array containing a list of stop words. */
   stopWords?: keyof typeof PredefinedStopWords | string[];
 }
 
-const JapaneseStopFilter = ({ stopWords = '_japanese_' }: JapaneseStopFilterOptions = {}) => {
+const StopFilter = ({ stopWords = '_english_' }: StopFilterOptions = {}) => {
   let stopWordSet: Set<string>;
   if (typeof stopWords === 'string') {
     stopWordSet = new Set(PredefinedStopWords[stopWords]);
@@ -25,4 +25,4 @@ const JapaneseStopFilter = ({ stopWords = '_japanese_' }: JapaneseStopFilterOpti
   };
 };
 
-export default JapaneseStopFilter;
+export default StopFilter;

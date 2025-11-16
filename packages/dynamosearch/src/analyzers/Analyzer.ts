@@ -3,13 +3,7 @@ import type Tokenizer from '../tokenizers/Tokenizer.js';
 export type CharacterFilter = (str: string) => string;
 export type TokenFilter = (tokens: { text: string }[]) => { text: string }[];
 
-export interface AnalyzerOptions {
-  tokenizer: typeof Tokenizer;
-  charFilters?: CharacterFilter[];
-  filters?: TokenFilter[];
-}
-
-class Analyzer {
+abstract class Analyzer {
   tokenizer: Tokenizer;
   charFilters: CharacterFilter[];
   filters: TokenFilter[];
@@ -20,12 +14,8 @@ class Analyzer {
     this.filters = filters ?? [];
   }
 
-  static async getInstance(options: AnalyzerOptions) {
-    return new Analyzer({
-      tokenizer: await options.tokenizer.getInstance(),
-      charFilters: options.charFilters,
-      filters: options.filters,
-    });
+  static async getInstance(): Promise<Analyzer> {
+    throw new Error('Not implemented');
   }
 
   analyze(str: string) {

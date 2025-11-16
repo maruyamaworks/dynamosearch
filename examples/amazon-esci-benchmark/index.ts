@@ -32,11 +32,11 @@ if (cluster.isPrimary) {
           [DynamoSearch.ATTR_PK]: { S: '_' },
           [DynamoSearch.ATTR_SK]: { B: Buffer.alloc(1).toString('base64') },
           [DynamoSearch.ATTR_META_DOCUMENT_COUNT]: { N: inserted.reduce((a, b) => a + b, 0).toString() },
-          [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:t`]: { N: resultMap.get('product_title')!.toString() },
-          [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:d`]: { N: resultMap.get('product_description')!.toString() },
-          [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:p`]: { N: resultMap.get('product_bullet_point')!.toString() },
-          [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:b`]: { N: resultMap.get('product_brand')!.toString() },
-          [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:c`]: { N: resultMap.get('product_color')!.toString() },
+          [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:t`]: { N: (resultMap.get('product_title') ?? 0).toString() },
+          [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:d`]: { N: (resultMap.get('product_description') ?? 0).toString() },
+          [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:p`]: { N: (resultMap.get('product_bullet_point') ?? 0).toString() },
+          [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:b`]: { N: (resultMap.get('product_brand') ?? 0).toString() },
+          [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:c`]: { N: (resultMap.get('product_color') ?? 0).toString() },
         };
         await writeFile('./outputs/metadata.jsonl', JSON.stringify({ Item: metadata }) + '\n');
         process.exit(0);
