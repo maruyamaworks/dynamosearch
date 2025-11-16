@@ -1,0 +1,356 @@
+# Live Demo
+
+This page demonstrates ultra-fast search powered by DynamoSearch on [Amazon's publicly available product dataset](https://github.com/amazon-science/esci-data) containing over 1 million items. Enter a search query below to see results.
+
+<div class="demo-container">
+  <div style="display: flex; align-items: center; margin-bottom: 1rem; gap: 1rem;">
+    <fieldset class="locale-toggle">
+      <label v-for="item in locales">
+        <button
+          @click="locale = item.value; query = ''"
+          :class="['locale-button', { active: locale === item.value }]"
+          :disabled="loading"
+        >
+          <div class="radio"></div>
+          {{ item.label }}
+        </button>
+      </label>
+    </fieldset>
+    <div class="total-count">
+      {{ locales.find(({ value }) => value === locale).total.toLocaleString() }} products
+    </div>
+  </div>
+
+  <div class="search-box">
+    <input
+      v-model="query"
+      @keypress.prevent.enter="allowSubmit"
+      @keyup.prevent.enter="performSearch"
+      type="text"
+      :placeholder="`Search products (e.g., ${locale === 'us' ? 'wireless headphones, coffee maker...' : 'ワイヤレスヘッドフォン、コーヒーメーカー...'})`"
+      class="search-input"
+    />
+    <button @click="onClickSubmit" class="search-button" :disabled="loading">
+      {{ loading ? 'Searching...' : 'Search' }}
+    </button>
+  </div>
+
+  <div v-if="error" class="results-info error">
+    <div class="results-info-title">ERROR</div>
+    <div class="results-info-content">{{ error }}</div>
+  </div>
+
+  <div v-if="results" class="results-info">
+    <div class="results-info-title">SUCCESS</div>
+    <div class="results-info-content">
+      <div>Found <strong>{{ results.items.length }}</strong> results in <strong>{{ results.queryTime }} ms</strong></div>
+      <div>RCUs consumed: <strong>{{ results.consumedCapacity.toFixed(1) }}</strong> ({{ (results.consumedCapacity * 0.125 / 1000000).toFixed(7) }} USD)</div>
+    </div>
+  </div>
+
+  <div v-if="results && results.items.length > 0" class="results-list">
+    <div v-for="(item, index) in results.items" :key="index" class="result-item">
+      <div class="result-header">
+        <span class="result-score">Score: {{ item.score.toFixed(2) }}</span>
+        <span class="result-id">{{ item.data.product_id }}</span>
+      </div>
+      <h3 class="result-title">{{ item.data.product_title }}</h3>
+      <p v-if="item.data.product_description" class="result-description" v-html="escape(item.data.product_description)"></p>
+      <p v-if="item.data.product_bullet_point" class="result-bullet" v-html="escape(item.data.product_bullet_point)"></p>
+      <div class="result-meta">
+        <span v-if="item.data.product_brand" class="result-brand">Brand: {{ item.data.product_brand }}</span>
+        <span v-if="item.data.product_color" class="result-color">Color: {{ item.data.product_color }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="results && results.items.length === 0" class="no-results">
+    No results found. Try a different search term.
+  </div>
+</div>
+
+<script setup>
+import { ref } from 'vue';
+
+const query = ref('');
+const results = ref(null);
+
+const submitAllowed = ref(false);
+const loading = ref(false);
+const error = ref(null);
+const locale = ref('us');
+
+const locales = [
+  { value: 'us', label: 'US', total: 1215854, scanRCU: 183299.5 },
+  { value: 'jp', label: 'JP', total: 339059, scanRCU: 46450.0 },
+];
+
+const allowSubmit = () => {
+  submitAllowed.value = true;
+};
+
+const performSearch = async () => {
+  if (!submitAllowed.value) return;
+  submitAllowed.value = false;
+  if (!query.value.trim()) {
+    error.value = 'Please enter a search query';
+    results.value = null;
+    return;
+  }
+  loading.value = true;
+  error.value = null;
+  results.value = null;
+  try {
+    const response = await fetch(`https://g21ob31p59.execute-api.ap-northeast-1.amazonaws.com/search?q=${encodeURIComponent(query.value)}&locale=${locale.value}`);
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.message);
+    }
+    const data = await response.json();
+    results.value = data;
+  } catch (err) {
+    error.value = err.message;
+  } finally {
+    loading.value = false;
+  }
+};
+
+const onClickSubmit = () => {
+  submitAllowed.value = true;
+  performSearch();
+};
+
+const escape = (str) => {
+  return str
+    .replace(/[&<>"']/g, (match) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match]))
+    .replace(/&lt;(\/?)b&gt;/gi, '<$1b>')
+    .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
+    .replace(/&lt;(\/?)p&gt;/gi, '<$1p>')
+    .replace(/&lt;(\/?)ol&gt;/gi, '<$1ol>')
+    .replace(/&lt;(\/?)ul&gt;/gi, '<$1ul>')
+    .replace(/&lt;(\/?)li&gt;/gi, '<$1li>')
+    .replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+};
+</script>
+
+<style scoped>
+.demo-container {
+  margin: 2rem 0;
+}
+
+.locale-toggle {
+  border: none;
+  display: flex;
+}
+
+.locale-toggle label:first-child .locale-button {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+.locale-toggle label:last-child .locale-button {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.locale-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--vp-c-text-2);
+  border: 1px solid var(--vp-c-divider);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.locale-button.active {
+  color: var(--vp-c-text-1);
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+}
+
+.locale-button .radio {
+  border-radius: 100%;
+  width: 1rem;
+  height: 1rem;
+  border: solid 1px var(--vp-c-divider);
+}
+
+.locale-button.active .radio {
+  background-color: var(--vp-c-brand-1);
+  position: relative;
+}
+
+.locale-button.active .radio::after {
+  content: '';
+  position: absolute;
+  background-color: var(--vp-c-bg);
+  border-radius: 100%;
+  width: 0.375rem;
+  height: 0.375rem;
+  inset: 0;
+  margin: auto;
+}
+
+.total-count {
+  font-size: 14px;
+}
+
+.search-box {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--vp-c-brand-1);
+}
+
+.search-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--vp-c-bg);
+  background: var(--vp-c-brand-1);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.search-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.results-info {
+  padding: 16px;
+  background: var(--vp-c-success-soft);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-size: 14px;
+  color: var(--vp-c-text-1);
+}
+
+.results-info.error {
+  background: var(--vp-custom-block-danger-bg);
+}
+
+.results-info-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.result-item {
+  padding: 1rem 1.5rem 0.85rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg-soft);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.result-score {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.result-brand {
+  font-size: 0.85rem;
+  color: var(--vp-c-text-2);
+  font-weight: 500;
+}
+
+.result-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  line-height: 1.4;
+}
+
+.result-description {
+  margin: 0 0 0.75rem 0;
+  color: var(--vp-c-text-2);
+  line-height: 1.6;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+}
+
+.result-bullet {
+  margin: 0 0 1rem 0;
+  color: var(--vp-c-text-3);
+  line-height: 1.6;
+  font-size: 0.9rem;
+  padding-left: 1rem;
+  border-left: 3px solid var(--vp-c-divider);
+  white-space: pre-wrap;
+}
+
+.result-meta {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--vp-c-divider);
+  font-size: 0.85rem;
+  color: var(--vp-c-text-3);
+}
+
+.result-color {
+  font-weight: 500;
+}
+
+.result-id {
+  color: var(--vp-c-text-3);
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.85rem;
+  margin-left: auto;
+}
+
+.no-results {
+  padding: 2rem;
+  text-align: center;
+  color: var(--vp-c-text-2);
+  background: var(--vp-c-bg-soft);
+  border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+  .search-box {
+    flex-direction: column;
+  }
+
+  .result-meta {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
+</style>

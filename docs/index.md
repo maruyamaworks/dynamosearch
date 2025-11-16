@@ -3,12 +3,15 @@ layout: home
 
 hero:
   name: DynamoSearch
-  text: Search at scale, Serverless pricing
-  tagline: Full-text search by DynamoDB, for DynamoDB
+  text: Search at scale, Serverless by design
+  tagline: Elasticsearch-inspired search, built for DynamoDB
   actions:
     - theme: brand
       text: Get Started
       link: /guide/
+    - theme: alt
+      text: Live Demo
+      link: /demo
     - theme: alt
       text: View on GitHub
       link: https://github.com/maruyamaworks/dynamosearch

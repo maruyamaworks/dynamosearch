@@ -3,7 +3,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid';
 export default withMermaid({
   base: '/dynamosearch/',
   title: 'DynamoSearch',
-  description: 'Full-text search by DynamoDB, for DynamoDB',
+  description: 'Elasticsearch-inspired search, built for DynamoDB',
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/dynamosearch/favicon.svg' }],
   ],
@@ -20,6 +20,7 @@ export default withMermaid({
     nav: [
       { text: 'Guide', link: '/guide/' },
       { text: 'Reference', link: '/reference/' },
+      { text: 'Live Demo', link: '/demo' },
       {
         text: 'v0.2.4',
         items: [
