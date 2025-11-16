@@ -4,6 +4,9 @@ export default withMermaid({
   base: '/dynamosearch/',
   title: 'DynamoSearch',
   description: 'Full-text search by DynamoDB, for DynamoDB',
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/dynamosearch/favicon.svg' }],
+  ],
   vite: {
     optimizeDeps: {
       include: ['mermaid'],
