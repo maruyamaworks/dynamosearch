@@ -51,19 +51,24 @@ This page demonstrates ultra-fast search powered by DynamoSearch on [Amazon's pu
 
   <div v-if="results && results.items.length > 0" class="results-list">
     <div v-for="(item, index) in results.items" :key="index" class="result-item">
-      <div class="result-header">
-        <span class="result-score">Score: {{ item.score.toFixed(2) }}</span>
-        <span class="result-id">{{ item.data.product_id }}</span>
+      <div :class="['result-content', { expanded: expandedItems.has(index), overflowing: overflowingItems.has(index) }]">
+        <div class="result-header">
+          <span class="result-score">Score: {{ item.score.toFixed(2) }}</span>
+          <span class="result-id">{{ item.data.product_id }}</span>
+        </div>
+        <h3 class="result-title">{{ item.data.product_title }}</h3>
+        <p v-if="item.data.product_description" class="result-description" v-html="escape(item.data.product_description)"></p>
+        <ul v-if="item.data.product_bullet_point" class="result-bullet">
+          <li v-for="line in item.data.product_bullet_point.split(/\r?\n/)" v-html="escape(line)"></li>
+        </ul>
+        <div class="result-meta">
+          <span v-if="item.data.product_brand">Brand: {{ item.data.product_brand }}</span>
+          <span v-if="item.data.product_color">Color: {{ item.data.product_color }}</span>
+        </div>
       </div>
-      <h3 class="result-title">{{ item.data.product_title }}</h3>
-      <p v-if="item.data.product_description" class="result-description" v-html="escape(item.data.product_description)"></p>
-      <ul v-if="item.data.product_bullet_point" class="result-bullet">
-        <li v-for="line in item.data.product_bullet_point.split(/\r?\n/)" v-html="escape(line)"></li>
-      </ul>
-      <div class="result-meta">
-        <span v-if="item.data.product_brand">Brand: {{ item.data.product_brand }}</span>
-        <span v-if="item.data.product_color">Color: {{ item.data.product_color }}</span>
-      </div>
+      <a v-if="overflowingItems.has(index) && !expandedItems.has(index)" @click.prevent="expand(index)" class="show-more-link">
+        Show more
+      </a>
     </div>
   </div>
 
@@ -82,6 +87,8 @@ const submitAllowed = ref(false);
 const loading = ref(false);
 const error = ref(null);
 const locale = ref('us');
+const expandedItems = ref(new Set());
+const overflowingItems = ref(new Set());
 
 const locales = [
   { value: 'us', label: 'US', total: 1215854, scanRCU: 183299.5 },
@@ -103,6 +110,8 @@ const performSearch = async () => {
   loading.value = true;
   error.value = null;
   results.value = null;
+  expandedItems.value.clear();
+  overflowingItems.value.clear();
   try {
     const response = await fetch(`https://g21ob31p59.execute-api.ap-northeast-1.amazonaws.com/search?q=${encodeURIComponent(query.value)}&locale=${locale.value}`);
     if (!response.ok) {
@@ -111,6 +120,7 @@ const performSearch = async () => {
     }
     const data = await response.json();
     results.value = data;
+    setTimeout(checkOverflow, 0);
   } catch (err) {
     error.value = err.message;
   } finally {
@@ -118,9 +128,22 @@ const performSearch = async () => {
   }
 };
 
+const checkOverflow = () => {
+  const items = document.querySelectorAll('.result-content');
+  items.forEach((item, index) => {
+    if (item.scrollHeight > 300) {
+      overflowingItems.value.add(index);
+    }
+  });
+};
+
 const onClickSubmit = () => {
   submitAllowed.value = true;
   performSearch();
+};
+
+const expand = (index) => {
+  expandedItems.value.add(index);
 };
 
 const escape = (str) => {
@@ -263,10 +286,46 @@ const escape = (str) => {
 }
 
 .result-item {
-  padding: 1rem 1.5rem 0.85rem;
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
   background: var(--vp-c-bg-soft);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.result-content {
+  max-height: 300px;
+  overflow: hidden;
+  padding: 1rem 1.5rem 0.85rem;
+  position: relative;
+}
+
+.result-content.expanded {
+  max-height: none;
+}
+
+.result-content.overflowing:not(.expanded)::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 75px;
+  background: linear-gradient(to bottom, transparent, var(--vp-c-bg-soft) 60%);
+  pointer-events: none;
+}
+
+.show-more-link {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .result-header {
