@@ -5,7 +5,7 @@ This page demonstrates ultra-fast search powered by DynamoSearch on [Amazon's pu
 <div class="demo-container">
   <div style="display: flex; align-items: center; margin-bottom: 1rem; gap: 1rem;">
     <fieldset class="locale-toggle">
-      <label v-for="item in locales">
+      <label v-for="item in locales" :key="item.value">
         <button
           @click="locale = item.value; query = ''"
           :class="['locale-button', { active: locale === item.value }]"
@@ -27,6 +27,7 @@ This page demonstrates ultra-fast search powered by DynamoSearch on [Amazon's pu
       @keypress.prevent.enter="allowSubmit"
       @keyup.prevent.enter="performSearch"
       type="text"
+      :disabled="loading"
       :placeholder="`Search products (e.g., ${locale === 'us' ? 'wireless headphones, coffee maker...' : 'ワイヤレスヘッドフォン、コーヒーメーカー...'})`"
       class="search-input"
     />
@@ -56,10 +57,12 @@ This page demonstrates ultra-fast search powered by DynamoSearch on [Amazon's pu
       </div>
       <h3 class="result-title">{{ item.data.product_title }}</h3>
       <p v-if="item.data.product_description" class="result-description" v-html="escape(item.data.product_description)"></p>
-      <p v-if="item.data.product_bullet_point" class="result-bullet" v-html="escape(item.data.product_bullet_point)"></p>
+      <ul v-if="item.data.product_bullet_point" class="result-bullet">
+        <li v-for="line in item.data.product_bullet_point.split(/\r?\n/)" v-html="escape(line)"></li>
+      </ul>
       <div class="result-meta">
-        <span v-if="item.data.product_brand" class="result-brand">Brand: {{ item.data.product_brand }}</span>
-        <span v-if="item.data.product_color" class="result-color">Color: {{ item.data.product_color }}</span>
+        <span v-if="item.data.product_brand">Brand: {{ item.data.product_brand }}</span>
+        <span v-if="item.data.product_color">Color: {{ item.data.product_color }}</span>
       </div>
     </div>
   </div>
@@ -282,12 +285,6 @@ const escape = (str) => {
   border-radius: 4px;
 }
 
-.result-brand {
-  font-size: 0.85rem;
-  color: var(--vp-c-text-2);
-  font-weight: 500;
-}
-
 .result-title {
   margin: 0 0 0.75rem 0;
   font-size: 1.1rem;
@@ -301,17 +298,19 @@ const escape = (str) => {
   color: var(--vp-c-text-2);
   line-height: 1.6;
   font-size: 0.95rem;
-  white-space: pre-wrap;
 }
 
 .result-bullet {
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.75rem 0;
   color: var(--vp-c-text-3);
   line-height: 1.6;
   font-size: 0.9rem;
   padding-left: 1rem;
-  border-left: 3px solid var(--vp-c-divider);
   white-space: pre-wrap;
+}
+
+.result-bullet li {
+  margin: 0.25rem 0;
 }
 
 .result-meta {
@@ -321,11 +320,7 @@ const escape = (str) => {
   padding-top: 0.75rem;
   border-top: 1px solid var(--vp-c-divider);
   font-size: 0.85rem;
-  color: var(--vp-c-text-3);
-}
-
-.result-color {
-  font-weight: 500;
+  color: var(--vp-c-text-2);
 }
 
 .result-id {
