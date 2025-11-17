@@ -61,7 +61,7 @@ This page demonstrates ultra-fast search powered by DynamoSearch on [Amazon's pu
         <ul v-if="item.data.product_bullet_point" class="result-bullet">
           <li v-for="line in item.data.product_bullet_point.split(/\r?\n/)" v-html="escape(line)"></li>
         </ul>
-        <div class="result-meta">
+        <div v-if="item.data.product_brand || item.data.product_color" class="result-meta">
           <span v-if="item.data.product_brand">Brand: {{ item.data.product_brand }}</span>
           <span v-if="item.data.product_color">Color: {{ item.data.product_color }}</span>
         </div>
@@ -113,7 +113,7 @@ const performSearch = async () => {
   expandedItems.value.clear();
   overflowingItems.value.clear();
   try {
-    const response = await fetch(`https://g21ob31p59.execute-api.ap-northeast-1.amazonaws.com/search?q=${encodeURIComponent(query.value)}&locale=${locale.value}`);
+    const response = await fetch(`https://dynamosearch.maruyama.works/api/search?q=${encodeURIComponent(query.value)}&locale=${locale.value}`);
     if (!response.ok) {
       const err = await response.json();
       throw new Error(err.message);
