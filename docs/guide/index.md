@@ -236,7 +236,7 @@ export const handler = async (event) => {
 Deploy the function and configure it as a trigger for your DynamoDB Stream. The Lambda function needs IAM permissions to read from the stream and write to the index table.
 
 ::: info
-For detailed deployment instructions and AWS SAM/CDK examples, see the [AWS Lambda Integration](/guide/lambda-integration) guide.
+For detailed deployment instructions and AWS SAM/CDK examples, see the [AWS Lambda Integration](/guide/sam-example) guide.
 :::
 
 ## Step 5: Add Documents to Your Source Table
