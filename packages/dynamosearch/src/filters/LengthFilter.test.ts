@@ -1,0 +1,25 @@
+import { test, expect } from 'vitest';
+import LengthFilter from './LengthFilter.js';
+
+test('LengthFilter', () => {
+  const filter = LengthFilter({ min: 0, max: 4 });
+  const input = [
+    { text: 'the' },
+    { text: 'quick' },
+    { text: 'brown' },
+    { text: 'fox' },
+    { text: 'jumps' },
+    { text: 'over' },
+    { text: 'the' },
+    { text: 'lazy' },
+    { text: 'dog' },
+  ];
+  expect(filter(input)).toEqual([
+    { text: 'the' },
+    { text: 'fox' },
+    { text: 'over' },
+    { text: 'the' },
+    { text: 'lazy' },
+    { text: 'dog' },
+  ]);
+});
