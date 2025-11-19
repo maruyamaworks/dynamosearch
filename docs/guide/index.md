@@ -4,7 +4,8 @@ This guide will help you install and configure DynamoSearch for your project.
 
 ## Requirements
 
-- Node.js 20+
+- [Node.js 20+](https://nodejs.org/) installed
+- AWS credentials configured (`aws configure`)
 
 ## Installation
 

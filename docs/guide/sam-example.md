@@ -1,4 +1,4 @@
-# AWS Lambda Integration
+# AWS SAM Example
 
 This guide shows how to deploy DynamoSearch to AWS Lambda using the provided SAM (Serverless Application Model) example.
 
@@ -196,55 +196,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 };
 ```
 
-## SAM Template Configuration
-
-The `template.yaml` includes optimized settings:
-
-### Runtime and Architecture
-
-```yaml
-Globals:
-  Function:
-    Runtime: nodejs22.x
-    Architectures:
-      - arm64  # Lower cost, better performance
-    MemorySize: 512
-    Timeout: 30
-```
-
-### Stream Configuration
-
-```yaml
-IndexerFunction:
-  Events:
-    Stream:
-      Type: DynamoDB
-      Properties:
-        Stream: !GetAtt DocumentsTable.StreamArn
-        StartingPosition: LATEST
-        BatchSize: 100
-        MaximumBatchingWindowInSeconds: 5
-```
-
-- **BatchSize**: Process up to 100 records per invocation
-- **MaximumBatchingWindowInSeconds**: Wait up to 5 seconds to accumulate records
-
-### IAM Policies
-
-```yaml
-IndexerFunction:
-  Policies:
-    - DynamoDBCrudPolicy:
-        TableName: !Ref SearchIndexTable
-    - DynamoDBStreamReadPolicy:
-        TableName: !Ref DocumentsTable
-
-SearchFunction:
-  Policies:
-    - DynamoDBReadPolicy:
-        TableName: !Ref SearchIndexTable
-```
-
 ## Local Development
 
 ### Start Local API
@@ -267,22 +218,6 @@ curl -X POST http://127.0.0.1:3000/documents \
 curl "http://127.0.0.1:3000/search?q=test"
 ```
 
-## Monitoring
-
-### View Logs
-
-```bash
-sam logs -n IndexerFunction --tail
-sam logs -n SearchFunction --tail
-```
-
-### CloudWatch Metrics
-
-Monitor in the AWS Console:
-- Lambda invocations and errors
-- DynamoDB read/write capacity
-- API Gateway requests and latency
-
 ## Cleanup
 
 Delete all resources:
@@ -297,73 +232,3 @@ Confirm the deletion when prompted. This removes:
 - API Gateway
 - CloudWatch log groups
 - IAM roles
-
-## Customization
-
-### Modify Searchable Fields
-
-Edit both `src/indexer.ts` and `src/search.ts`:
-
-```typescript
-attributes: [
-  { name: 'title', analyzer, shortName: 't' },
-  { name: 'description', analyzer, shortName: 'd' },
-  { name: 'tags', analyzer, shortName: 'tg' },  // Add new field
-],
-```
-
-### Adjust Field Boosting
-
-In `src/search.ts`:
-
-```typescript
-const results = await dynamosearch.search(query, {
-  attributes: ['title^3', 'description'],  // Boost title 3x instead of 2x
-  maxItems: 20,
-});
-```
-
-### Change Memory/Timeout
-
-In `template.yaml`:
-
-```yaml
-Globals:
-  Function:
-    MemorySize: 1024  # Increase for better performance
-    Timeout: 60       # Increase for large documents
-```
-
-## Best Practices
-
-1. **Use ARM64 architecture** - The template uses ARM64 for better price/performance
-2. **External AWS SDK** - The build excludes `@aws-sdk/*` to reduce bundle size (Lambda runtime provides it)
-3. **Environment variables** - Table names are passed via environment variables for flexibility
-4. **Error handling** - SearchFunction includes try/catch for graceful error responses
-5. **Logging** - Both functions log events for debugging
-
-## Troubleshooting
-
-### Indexer Not Processing Records
-
-Check CloudWatch logs:
-```bash
-sam logs -n IndexerFunction --tail
-```
-
-Common issues:
-- IAM permissions missing
-- Stream not enabled on source table
-- Lambda timeout too short
-
-### Search Returns No Results
-
-1. Verify documents were indexed:
-   - Check CloudWatch logs for IndexerFunction
-   - Query SearchIndexTable directly in AWS Console
-
-2. Check analyzer compatibility:
-   - Both indexer and search must use the same analyzer
-
-3. Verify table name:
-   - Ensure `INDEX_TABLE_NAME` environment variable is correct

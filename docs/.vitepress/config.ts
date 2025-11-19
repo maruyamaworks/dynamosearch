@@ -45,12 +45,12 @@ export default withMermaid({
           items: [
             { text: 'Text Analysis', link: '/guide/text-analysis' },
             { text: 'Custom Analyzers', link: '/guide/custom-analyzers' },
+            { text: 'AWS SAM Example', link: '/guide/sam-example' },
           ],
         },
         {
           text: 'Advanced',
           items: [
-            { text: 'AWS Lambda Integration', link: '/guide/lambda-integration' },
             { text: 'Cost Optimization', link: '/guide/cost-optimization' },
             { text: 'Index Table', link: '/guide/index-table' },
             { text: 'Reindexing', link: '/guide/reindexing' },
