@@ -1,6 +1,6 @@
 {
   "name": "@dynamosearch/plugin-analysis-kuromoji",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "license": "MIT",
   "author": "Kenichi Maruyama <11133876+maruyamaworks@users.noreply.github.com>",
   "main": "dist/index.js",

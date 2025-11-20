@@ -7,11 +7,8 @@ export interface KuromojiTokenizerOptions extends TokenizerBuilderOption {
 }
 
 const isPunctuation = (str: string) => {
-  /**
-   * TODO: Checks should be performed using Unicode's General Category, like the original implementation of the Apache Lucene.
-   * https://github.com/apache/lucene/blob/main/lucene/analysis/kuromoji/src/java/org/apache/lucene/analysis/ja/ViterbiNBest.java
-   */
-  return /^[-_=+~!@#$%^&*(){}[\]|\\:;"'`<>,.?/\s]*$/.test(str);
+  // https://github.com/apache/lucene/blob/6c5d3299967fc905a6b6c54586289153c1c53e66/lucene/analysis/kuromoji/src/java/org/apache/lucene/analysis/ja/ViterbiNBest.java#L705
+  return /^(\p{Zs}|\p{Zl}|\p{Zp}|\p{Cc}|\p{Cf}|\p{Pd}|\p{Ps}|\p{Pe}|\p{Pc}|\p{Po}|\p{Sm}|\p{Sc}|\p{Sk}|\p{So}|\p{Pi}|\p{Pf})*$/u.test(str);
 };
 
 class KuromojiTokenizer extends Tokenizer {

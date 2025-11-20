@@ -21,10 +21,7 @@ class SimplePatternTokenizer extends Tokenizer {
 
   tokenize(str: string) {
     const matches = str.match(this.pattern);
-    if (!matches) {
-      return [];
-    }
-    return matches.map(token => ({ text: token }));
+    return matches?.map(token => ({ text: token })) ?? [];
   }
 }
 
