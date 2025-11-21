@@ -49,7 +49,7 @@ export interface BM25Params {
   b?: number;
 }
 
-const encodeKeys = (keys: Record<string, any>[], { delimiter = ';', escape = '\\' } = {}) => {
+const encodeKeys = (keys: AWSLambda.AttributeValue[], { delimiter = ';', escape = '\\' } = {}) => {
   let str = '';
   for (let i = 0; i < keys.length; i++) {
     str += Object.keys(keys[i])[0];
@@ -344,7 +344,7 @@ class DynamoSearch {
   }
 
   async updateMetadata({ count, resultMap }: { count: number; resultMap: Map<string, number> }) {
-    let updateExpressions = ['#attr = if_not_exists(#attr, :zero) + :val'];
+    const updateExpressions = ['#attr = if_not_exists(#attr, :zero) + :val'];
     const expressionAttributeNames: Record<string, string> = {
       '#attr': DynamoSearch.ATTR_META_DOCUMENT_COUNT,
     };
