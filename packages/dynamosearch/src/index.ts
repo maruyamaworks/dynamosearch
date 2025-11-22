@@ -23,6 +23,7 @@ export interface Attribute {
   name: string;
   analyzer: Analyzer;
   shortName?: string;
+  mapper?: (value: AWSLambda.AttributeValue) => string[];
 }
 
 export interface Key {
@@ -203,7 +204,7 @@ class DynamoSearch {
     let inserted = 0;
     for (let i = 0; i < this.attributes.length; i++) {
       const tokens = new Map<string, number>();
-      const attributeValues = extractStringValues(item[this.attributes[i].name]);
+      const attributeValues = (this.attributes[i].mapper ?? extractStringValues)(item[this.attributes[i].name]);
       const result = attributeValues.flatMap(str => this.attributes[i].analyzer.analyze(str));
       resultMap.set(this.attributes[i].name, (resultMap.get(this.attributes[i].name) ?? 0) + result.length);
       for (let j = 0; j < result.length; j++) {
@@ -287,7 +288,7 @@ class DynamoSearch {
     let text = '';
     for (let i = 0; i < this.attributes.length; i++) {
       const tokens = new Map<string, number>();
-      const attributeValues = extractStringValues(item[this.attributes[i].name]);
+      const attributeValues = (this.attributes[i].mapper ?? extractStringValues)(item[this.attributes[i].name]);
       const result = attributeValues.flatMap(str => this.attributes[i].analyzer.analyze(str));
       resultMap.set(this.attributes[i].name, (resultMap.get(this.attributes[i].name) ?? 0) + result.length);
       for (let j = 0; j < result.length; j++) {
@@ -327,7 +328,7 @@ class DynamoSearch {
     return { inserted, resultMap };
   }
 
-  async getMetadata() {
+  async getIndexMetadata() {
     const { Item } = await this.client.send(new GetItemCommand({
       TableName: this.indexTableName,
       Key: DynamoSearch.META_KEY,
@@ -343,7 +344,7 @@ class DynamoSearch {
     };
   }
 
-  async updateMetadata({ count, resultMap }: { count: number; resultMap: Map<string, number> }) {
+  async updateIndexMetadata({ count, resultMap }: { count: number; resultMap: Map<string, number> }) {
     const updateExpressions = ['#attr = if_not_exists(#attr, :zero) + :val'];
     const expressionAttributeNames: Record<string, string> = {
       '#attr': DynamoSearch.ATTR_META_DOCUMENT_COUNT,
@@ -382,7 +383,7 @@ class DynamoSearch {
         if (inserted > 0) count++;
       }
     }
-    await this.updateMetadata({ count, resultMap });
+    await this.updateIndexMetadata({ count, resultMap });
   }
 
   async reindex(items: Record<string, AttributeValue>[]) {
@@ -395,7 +396,7 @@ class DynamoSearch {
       const { inserted } = await this.insertTokens(encoded, resultMap);
       if (inserted > 0) count++;
     }
-    await this.updateMetadata({ count, resultMap });
+    await this.updateIndexMetadata({ count, resultMap });
   }
 
   async search(query: string, { attributes, maxItems = 100, minScore = 0, bm25: { k1 = 1.2, b = 0.75 } = {} }: SearchOptions = {}) {
@@ -409,7 +410,7 @@ class DynamoSearch {
     }) ?? this.attributes;
 
     let consumedCapacity = 0;
-    const { docCount, tokenCount: tokenCountMap } = await this.getMetadata();
+    const { docCount, tokenCount: tokenCountMap } = await this.getIndexMetadata();
     const candidates = new Map<string, number>();
     for (let i = 0; i < _attributes.length; i++) {
       const tokens = _attributes[i].analyzer.analyze(query);
