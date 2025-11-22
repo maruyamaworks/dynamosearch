@@ -80,9 +80,25 @@ await client.send(new CreateTableCommand({
 }));
 ```
 
+```yaml [CloudFormation]
+Type: AWS::DynamoDB::Table
+Properties:
+  TableName: articles
+  AttributeDefinitions:
+    - AttributeName: id
+      AttributeType: S
+  KeySchema:
+    - AttributeName: id
+      KeyType: HASH
+  BillingMode: PAY_PER_REQUEST
+  StreamSpecification:
+    StreamEnabled: true
+    StreamViewType: NEW_AND_OLD_IMAGES
+```
+
 :::
 
-::: warning IMPORTANT
+::: warning
 The `StreamViewType` of the stream MUST be either `NEW_IMAGE` or `NEW_AND_OLD_IMAGES`.
 :::
 
@@ -92,10 +108,10 @@ In your application code, initialize a DynamoSearch instance:
 
 ```typescript
 import DynamoSearch from 'dynamosearch';
-import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer.js';
+import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer';
 
 // Create an analyzer
-const analyzer = await StandardAnalyzer.getInstance();
+const analyzer = new StandardAnalyzer();
 
 // Initialize DynamoSearch
 const dynamosearch = new DynamoSearch({
@@ -129,10 +145,10 @@ If you're indexing Japanese text, we recommend using `KuromojiAnalyzer` from `@d
 
 ```typescript
 import DynamoSearch from 'dynamosearch';
-import KuromojiAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/KuromojiAnalyzer.js';
+import KuromojiAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/KuromojiAnalyzer';
 
 // Create an analyzer
-const analyzer = await KuromojiAnalyzer.getInstance();
+const analyzer = new KuromojiAnalyzer();
 
 // Initialize DynamoSearch
 const dynamosearch = new DynamoSearch({ /* ... */ });
@@ -153,9 +169,17 @@ Alternatively, you can create the index table manually using the AWS CLI or AWS 
 ```bash [AWS CLI]
 aws dynamodb create-table \
   --table-name articles-index \
-  --attribute-definitions AttributeName=p,AttributeType=S AttributeName=s,AttributeType=B AttributeName=k,AttributeType=S AttributeName=h,AttributeType=B \
-  --key-schema AttributeName=p,KeyType=HASH AttributeName=s,KeyType=RANGE \
-  --global-secondary-indexes "IndexName=keys-index,KeySchema=[{AttributeName=k,KeyType=HASH}],Projection={ProjectionType=KEYS_ONLY}" "IndexName=hash-index,KeySchema=[{AttributeName=p,KeyType=HASH},{AttributeName=h,KeyType=RANGE}],Projection={ProjectionType=KEYS_ONLY}" \
+  --attribute-definitions \
+    AttributeName=p,AttributeType=S \
+    AttributeName=s,AttributeType=B \
+    AttributeName=k,AttributeType=S \
+    AttributeName=h,AttributeType=B \
+  --key-schema \
+    AttributeName=p,KeyType=HASH \
+    AttributeName=s,KeyType=RANGE \
+  --global-secondary-indexes \
+    "IndexName=keys-index,KeySchema=[{AttributeName=k,KeyType=HASH}],Projection={ProjectionType=KEYS_ONLY}" \
+    "IndexName=hash-index,KeySchema=[{AttributeName=p,KeyType=HASH},{AttributeName=h,KeyType=RANGE}],Projection={ProjectionType=KEYS_ONLY}" \
   --billing-mode PAY_PER_REQUEST
 ```
 
@@ -194,7 +218,42 @@ await client.send(new CreateTableCommand({
   ],
   BillingMode: 'PAY_PER_REQUEST',
 }));
+```
 
+```yaml [CloudFormation]
+Type: AWS::DynamoDB::Table
+Properties:
+  TableName: articles-index
+  AttributeDefinitions:
+    - AttributeName: p
+      AttributeType: S
+    - AttributeName: s
+      AttributeType: B
+    - AttributeName: k
+      AttributeType: S
+    - AttributeName: h
+      AttributeType: B
+  KeySchema:
+    - AttributeName: p
+      KeyType: HASH
+    - AttributeName: s
+      KeyType: RANGE
+  GlobalSecondaryIndexes:
+    - IndexName: keys-index
+      KeySchema:
+        - AttributeName: k
+          KeyType: HASH
+      Projection:
+        ProjectionType: KEYS_ONLY
+    - IndexName: hash-index
+      KeySchema:
+        - AttributeName: p
+          KeyType: HASH
+        - AttributeName: h
+          KeyType: RANGE
+      Projection:
+        ProjectionType: KEYS_ONLY
+  BillingMode: PAY_PER_REQUEST
 ```
 
 :::
@@ -214,9 +273,9 @@ Create a Lambda function that processes DynamoDB Stream events and updates the s
 
 ```javascript
 import DynamoSearch from 'dynamosearch';
-import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer.js';
+import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer';
 
-const analyzer = await StandardAnalyzer.getInstance();
+const analyzer = new StandardAnalyzer();
 const dynamosearch = new DynamoSearch({
   indexTableName: 'articles-index',
   attributes: [
@@ -327,9 +386,9 @@ Now you can perform full-text searches against your documents:
 
 ```typescript
 import DynamoSearch from 'dynamosearch';
-import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer.js';
+import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer';
 
-const analyzer = await StandardAnalyzer.getInstance();
+const analyzer = new StandardAnalyzer();
 const dynamosearch = new DynamoSearch({
   indexTableName: 'articles-index',
   attributes: [
@@ -369,9 +428,9 @@ The search results include:
 For more advanced search features like field boosting and filters, see the [API Reference](/reference/).
 :::
 
-## Step 7 (Optional): Retrieve Full Documents
+## Step 7 (Optional): Retrieve Complete Documents
 
-DynamoSearch returns only document keys and scores. To get the full document content, fetch from your source table using the returned keys:
+DynamoSearch returns only document keys and scores. To get the complete document data, fetch from your source table using the returned keys:
 
 ```typescript
 import { DynamoDBClient, BatchGetItemCommand } from '@aws-sdk/client-dynamodb';
@@ -387,7 +446,7 @@ const response = await client.send(new BatchGetItemCommand({
 }));
 
 const articles = response.Responses?.articles ?? [];
-console.log('Full Documents:');
+console.log('Documents:');
 articles.forEach((article) => {
   console.log({
     id: article.id.S,
@@ -399,15 +458,26 @@ articles.forEach((article) => {
 
 ## DynamoDB Client Configuration
 
-DynamoSearch uses the AWS SDK v3 DynamoDB client. You can configure it using environment variables:
+DynamoSearch uses the AWS SDK v3 DynamoDB client. You can configure it using the `dynamoDBClientConfig` option:
 
-```bash
-export AWS_REGION=us-east-1
-export AWS_ACCESS_KEY_ID=your-access-key
-export AWS_SECRET_ACCESS_KEY=your-secret-key
+```typescript
+import DynamoSearch from 'dynamosearch';
+
+const dynamosearch = new DynamoSearch({
+  indexTableName: 'articles-index',
+  attributes: [/* ... */],
+  keys: [/* ... */],
+  dynamoDBClientConfig: {
+    region: 'us-east-1',
+    credentials: {
+      accessKeyId: 'your-access-key',
+      secretAccessKey: 'your-secret-key',
+    },
+  },
+});
 ```
 
-Or use IAM roles when running on AWS Lambda, EC2, or ECS.
+Alternatively, you can use environment variables or IAM roles when running on AWS Lambda, EC2, or ECS.
 
 ## Required IAM Permissions
 
@@ -417,26 +487,30 @@ Your application needs the following IAM permissions to use DynamoSearch:
 {
   "Version": "2012-10-17",
   "Statement": [
+    // Required for createIndexTable() and deleteIndexTable()
     {
       "Effect": "Allow",
       "Action": [
         "dynamodb:CreateTable",
-        "dynamodb:DescribeTable"
+        "dynamodb:DeleteTable"
       ],
-      "Resource": "arn:aws:dynamodb:*:*:table/articles-index"
+      "Resource": "arn:aws:dynamodb:*:*:table/YOUR-INDEX-TABLE-NAME"
     },
+    // Required for indexing and search
     {
       "Effect": "Allow",
       "Action": [
+        "dynamodb:GetItem",
         "dynamodb:Query",
-        "dynamodb:BatchWriteItem",
         "dynamodb:PutItem",
-        "dynamodb:DeleteItem"
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:BatchWriteItem",
       ],
       "Resource": [
-        "arn:aws:dynamodb:*:*:table/articles-index",
-        "arn:aws:dynamodb:*:*:table/articles-index/index/keys-index",
-        "arn:aws:dynamodb:*:*:table/articles-index/index/hash-index"
+        "arn:aws:dynamodb:*:*:table/YOUR-INDEX-TABLE-NAME",
+        "arn:aws:dynamodb:*:*:table/YOUR-INDEX-TABLE-NAME/index/keys-index",
+        "arn:aws:dynamodb:*:*:table/YOUR-INDEX-TABLE-NAME/index/hash-index"
       ]
     }
   ]

@@ -1,3 +1,6 @@
+---
+aside: false
+---
 # Live Demo
 
 This page demonstrates ultra-fast search powered by DynamoSearch on [Amazon's publicly available product dataset](https://github.com/amazon-science/esci-data) containing over 1 million items. Enter a search query below to see results.

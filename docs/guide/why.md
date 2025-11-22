@@ -1,10 +1,10 @@
 # Why DynamoSearch
 
-DynamoSearch is a full-text search library for AWS DynamoDB that enables powerful search capabilities on your DynamoDB tables. It processes DynamoDB Streams to build and maintain a search index, implementing the BM25 scoring algorithm for relevance ranking.
+DynamoSearch is a full-text search library for [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) that enables powerful search capabilities on your DynamoDB tables. It processes DynamoDB Streams to build and maintain a search index, implementing the BM25 scoring algorithm for relevance ranking.
 
 ## The Problems
 
-DynamoDB is an excellent NoSQL database, but it lacks built-in full-text search capabilities. While you could use Amazon OpenSearch Service or Amazon CloudSearch, these add significant cost and operational complexity to your infrastructure.
+DynamoDB is an excellent NoSQL database, but it lacks built-in full-text search capabilities. While you could use Amazon OpenSearch Service or Elasticsearch, these add significant cost and operational complexity to your infrastructure.
 
 DynamoSearch solves this by:
 
@@ -41,9 +41,9 @@ sequenceDiagram
     Client->>Client: Calculate Scores
     Client-->>App: Ranked Results (Keys + Scores)
 
-    opt Retrieve Full Documents
+    opt Retrieve Original Data
         App->>DB: BatchGetItem (using keys)
-        DB-->>App: Full Document Data
+        DB-->>App: Complete Document Data
     end
 ```
 
@@ -52,7 +52,7 @@ sequenceDiagram
 1. **Data Modification**: Your application writes, updates, or deletes items in the source DynamoDB table
 2. **Stream Processing**: Changes trigger DynamoDB Streams, which invoke the Indexer Lambda function
 3. **Text Analysis**: The DynamoSearch client processes documents through an analyzer (character filters → tokenizer → token filters)
-4. **Index Update**: Analyzed tokens are written to the index table with occurrence counts, document length, and metadata
+4. **Index Update**: Analyzed tokens are written to the index table with metadata
 
 ### Search Flow
 
@@ -61,4 +61,4 @@ sequenceDiagram
 3. **Token Lookup**: The client queries the index table for documents containing the analyzed tokens
 4. **Ranking**: Matching documents are scored using the BM25 algorithm, which considers term frequency, inverse document frequency, and document length normalization
 5. **Results**: Ranked results are returned to your application with document keys and relevance scores
-6. **Retrieve Full Documents (Optional)**: Since DynamoSearch returns only keys and scores, your application can fetch complete document data from the source table
+6. **Retrieve Original Data (Optional)**: Since DynamoSearch returns only keys and scores, your application can fetch complete document data from the source table

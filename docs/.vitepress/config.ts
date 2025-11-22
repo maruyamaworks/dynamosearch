@@ -22,7 +22,7 @@ export default withMermaid({
       { text: 'Reference', link: '/reference/' },
       { text: 'Live Demo', link: '/demo' },
       {
-        text: 'v0.2.4',
+        text: 'v0.3.0',
         items: [
           {
             text: 'Changelog',
@@ -93,7 +93,7 @@ export default withMermaid({
     },
     footer: {
       message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2024 Kenichi Maruyama',
+      copyright: 'Copyright © 2025 Kenichi Maruyama',
     },
   },
 });
