@@ -10,20 +10,14 @@ export interface IntlSegmenterTokenizerOptions {
 }
 
 class IntlSegmenterTokenizer extends Tokenizer {
-  segmenter: Intl.Segmenter;
+  private segmenter: Intl.Segmenter;
 
-  constructor({ segmenter }: { segmenter: Intl.Segmenter }) {
+  constructor({ locales }: IntlSegmenterTokenizerOptions = {}) {
     super();
-    this.segmenter = segmenter;
+    this.segmenter = new Intl.Segmenter(locales, { granularity: 'word' });
   }
 
-  static override async getInstance(options?: Partial<IntlSegmenterTokenizerOptions>) {
-    return new IntlSegmenterTokenizer({
-      segmenter: new Intl.Segmenter(options?.locales, { granularity: 'word' }),
-    });
-  }
-
-  tokenize(str: string) {
+  override async tokenize(str: string) {
     const iterator = this.segmenter.segment(str);
     return [...iterator].filter(item => item.isWordLike).map(segment => ({ text: segment.segment }));
   }

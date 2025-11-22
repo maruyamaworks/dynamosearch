@@ -2,29 +2,22 @@ import Tokenizer from './Tokenizer.js';
 
 export interface PatternTokenizerOptions {
   /** a regular expression. */
-  pattern: RegExp;
+  pattern?: RegExp;
   /** Which capture group to extract as tokens. */
-  group: number;
+  group?: number;
 }
 
 class PatternTokenizer extends Tokenizer {
-  pattern: RegExp;
-  group: number;
+  private pattern: RegExp;
+  private group: number;
 
-  constructor({ pattern, group }: PatternTokenizerOptions) {
+  constructor({ pattern = /\W+/, group = -1 }: PatternTokenizerOptions = {}) {
     super();
     this.pattern = pattern;
     this.group = group;
   }
 
-  static override async getInstance(options?: Partial<PatternTokenizerOptions>) {
-    return new PatternTokenizer({
-      pattern: options?.pattern ?? /\W+/,
-      group: options?.group ?? -1,
-    });
-  }
-
-  tokenize(str: string) {
+  override async tokenize(str: string) {
     if (this.group === -1) {
       return str.split(this.pattern).filter(Boolean).map(token => ({ text: token }));
     }

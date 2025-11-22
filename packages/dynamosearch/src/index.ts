@@ -205,7 +205,7 @@ class DynamoSearch {
     for (let i = 0; i < this.attributes.length; i++) {
       const tokens = new Map<string, number>();
       const attributeValues = (this.attributes[i].mapper ?? extractStringValues)(item[this.attributes[i].name]);
-      const result = attributeValues.flatMap(str => this.attributes[i].analyzer.analyze(str));
+      const result = (await Promise.all(attributeValues.map(str => this.attributes[i].analyzer.analyze(str)))).flat();
       resultMap.set(this.attributes[i].name, (resultMap.get(this.attributes[i].name) ?? 0) + result.length);
       for (let j = 0; j < result.length; j++) {
         tokens.set(result[j].text, (tokens.get(result[j].text) ?? 0) + 1);
@@ -289,7 +289,7 @@ class DynamoSearch {
     for (let i = 0; i < this.attributes.length; i++) {
       const tokens = new Map<string, number>();
       const attributeValues = (this.attributes[i].mapper ?? extractStringValues)(item[this.attributes[i].name]);
-      const result = attributeValues.flatMap(str => this.attributes[i].analyzer.analyze(str));
+      const result = (await Promise.all(attributeValues.map(str => this.attributes[i].analyzer.analyze(str)))).flat();
       resultMap.set(this.attributes[i].name, (resultMap.get(this.attributes[i].name) ?? 0) + result.length);
       for (let j = 0; j < result.length; j++) {
         tokens.set(result[j].text, (tokens.get(result[j].text) ?? 0) + 1);
@@ -413,7 +413,7 @@ class DynamoSearch {
     const { docCount, tokenCount: tokenCountMap } = await this.getIndexMetadata();
     const candidates = new Map<string, number>();
     for (let i = 0; i < _attributes.length; i++) {
-      const tokens = _attributes[i].analyzer.analyze(query);
+      const tokens = await _attributes[i].analyzer.analyze(query);
       const words = [...new Set(tokens.map(token => token.text))];
       for (let j = 0; j < words.length; j++) {
         const command = new QueryCommand({

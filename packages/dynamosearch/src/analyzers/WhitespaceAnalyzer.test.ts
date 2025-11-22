@@ -2,8 +2,8 @@ import { test, expect } from 'vitest';
 import WhitespaceAnalyzer from './WhitespaceAnalyzer.js';
 
 test('WhitespaceAnalyzer', async () => {
-  const analyzer = await WhitespaceAnalyzer.getInstance();
-  const tokens = analyzer.analyze('The 2 QUICK Brown-Foxes jumped over the lazy dog\'s bone.');
+  const analyzer = new WhitespaceAnalyzer();
+  const tokens = await analyzer.analyze('The 2 QUICK Brown-Foxes jumped over the lazy dog\'s bone.');
   expect(tokens).toMatchObject([
     { text: 'The' },
     { text: '2' },

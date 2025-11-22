@@ -2,8 +2,8 @@ import { test, expect } from 'vitest';
 import KuromojiTokenizer from './KuromojiTokenizer.js';
 
 test('KuromojiTokenizer', async () => {
-  const tokenizer = await KuromojiTokenizer.getInstance({ discardPunctuation: true });
-  const tokens = tokenizer.tokenize('吾輩は猫である。名前はまだない。');
+  const tokenizer = new KuromojiTokenizer({ discardPunctuation: true });
+  const tokens = await tokenizer.tokenize('吾輩は猫である。名前はまだない。');
   expect(tokens).toMatchObject([
     { text: '吾輩' },
     { text: 'は' },
@@ -18,8 +18,8 @@ test('KuromojiTokenizer', async () => {
 });
 
 test('KuromojiTokenizer', async () => {
-  const tokenizer = await KuromojiTokenizer.getInstance({ discardPunctuation: false });
-  const tokens = tokenizer.tokenize('吾輩は猫である。名前はまだない。');
+  const tokenizer = new KuromojiTokenizer({ discardPunctuation: false });
+  const tokens = await tokenizer.tokenize('吾輩は猫である。名前はまだない。');
   expect(tokens).toMatchObject([
     { text: '吾輩' },
     { text: 'は' },
@@ -36,8 +36,8 @@ test('KuromojiTokenizer', async () => {
 });
 
 test('KuromojiTokenizer', async () => {
-  const tokenizer = await KuromojiTokenizer.getInstance({ discardPunctuation: true });
-  const tokens = tokenizer.tokenize('Hello, World!');
+  const tokenizer = new KuromojiTokenizer({ discardPunctuation: true });
+  const tokens = await tokenizer.tokenize('Hello, World!');
   expect(tokens).toMatchObject([
     { text: 'Hello' },
     { text: 'World' },
@@ -45,8 +45,8 @@ test('KuromojiTokenizer', async () => {
 });
 
 test('KuromojiTokenizer', async () => {
-  const tokenizer = await KuromojiTokenizer.getInstance({ discardPunctuation: false });
-  const tokens = tokenizer.tokenize('Hello, World!');
+  const tokenizer = new KuromojiTokenizer({ discardPunctuation: false });
+  const tokens = await tokenizer.tokenize('Hello, World!');
   expect(tokens).toMatchObject([
     { text: 'Hello' },
     { text: ',' },

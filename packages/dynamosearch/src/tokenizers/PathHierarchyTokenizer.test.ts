@@ -2,8 +2,8 @@ import { test, expect } from 'vitest';
 import PathHierarchyTokenizer from './PathHierarchyTokenizer.js';
 
 test('PathHierarchyTokenizer', async () => {
-  const tokenizer = await PathHierarchyTokenizer.getInstance({ delimiter: '/' });
-  const tokens = tokenizer.tokenize('/one/two/three');
+  const tokenizer = new PathHierarchyTokenizer({ delimiter: '/' });
+  const tokens = await tokenizer.tokenize('/one/two/three');
   expect(tokens).toMatchObject([
     { text: '/one' },
     { text: '/one/two' },

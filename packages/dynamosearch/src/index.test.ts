@@ -6,7 +6,7 @@ import StandardAnalyzer from './analyzers/StandardAnalyzer.js';
 import DynamoSearch from './index.js';
 
 beforeAll(async () => {
-  const analyzer = await StandardAnalyzer.getInstance();
+  const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
@@ -44,7 +44,7 @@ test('processRecords (INSERT)', async () => {
       },
     ],
   };
-  const analyzer = await StandardAnalyzer.getInstance();
+  const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
@@ -124,7 +124,7 @@ test('search', async () => {
       ],
     },
   }));
-  const analyzer = await StandardAnalyzer.getInstance();
+  const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
@@ -173,7 +173,7 @@ test('processRecords (MODIFY)', async () => {
       },
     ],
   };
-  const analyzer = await StandardAnalyzer.getInstance();
+  const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
@@ -226,7 +226,7 @@ test('processRecords (MODIFY)', async () => {
 });
 
 test('reindex', async () => {
-  const analyzer = await StandardAnalyzer.getInstance();
+  const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
@@ -270,7 +270,7 @@ test('reindex', async () => {
 });
 
 test('exportTokensAsFile', async () => {
-  const analyzer = await StandardAnalyzer.getInstance();
+  const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],
@@ -318,7 +318,7 @@ test('processRecords (REMOVE)', async () => {
       },
     ],
   };
-  const analyzer = await StandardAnalyzer.getInstance();
+  const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
     attributes: [{ name: 'Message', analyzer }],

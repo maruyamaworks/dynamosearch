@@ -2,8 +2,8 @@ import { test, expect } from 'vitest';
 import IntlSegmenterTokenizer from './IntlSegmenterTokenizer.js';
 
 test('IntlSegmenterTokenizer', async () => {
-  const tokenizer = await IntlSegmenterTokenizer.getInstance({ locales: 'en-US' });
-  const tokens = tokenizer.tokenize('The 2 QUICK Brown-Foxes jumped over the lazy dog\'s bone.');
+  const tokenizer = new IntlSegmenterTokenizer({ locales: 'en-US' });
+  const tokens = await tokenizer.tokenize('The 2 QUICK Brown-Foxes jumped over the lazy dog\'s bone.');
   expect(tokens).toMatchObject([
     { text: 'The' },
     { text: '2' },

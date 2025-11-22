@@ -2,8 +2,8 @@ import { test, expect } from 'vitest';
 import LowerCaseTokenizer from './LowerCaseTokenizer.js';
 
 test('LowerCaseTokenizer', async () => {
-  const tokenizer = await LowerCaseTokenizer.getInstance();
-  const tokens = tokenizer.tokenize('The 2 QUICK Brown-Foxes jumped over the lazy dog\'s bone.');
+  const tokenizer = new LowerCaseTokenizer();
+  const tokens = await tokenizer.tokenize('The 2 QUICK Brown-Foxes jumped over the lazy dog\'s bone.');
   expect(tokens).toMatchObject([
     { text: 'the' },
     { text: 'quick' },

@@ -1,16 +1,16 @@
 {
   "name": "dynamosearch",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "license": "MIT",
   "author": "Kenichi Maruyama <11133876+maruyamaworks@users.noreply.github.com>",
   "main": "dist/index.js",
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
-    "./analyzers/*": "./dist/analyzers/*",
-    "./char_filters/*": "./dist/char_filters/*",
-    "./tokenizers/*": "./dist/tokenizers/*",
-    "./filters/*": "./dist/filters/*"
+    "./analyzers/*": "./dist/analyzers/*.js",
+    "./char_filters/*": "./dist/char_filters/*.js",
+    "./tokenizers/*": "./dist/tokenizers/*.js",
+    "./filters/*": "./dist/filters/*.js"
   },
   "repository": {
     "type": "git",

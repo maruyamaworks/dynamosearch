@@ -2,24 +2,18 @@ import Tokenizer from './Tokenizer.js';
 
 export interface WhitespaceTokenizerOptions {
   /** The maximum token length. If a token is seen that exceeds this length then it is split at max_token_length intervals. */
-  maxTokenLength: number;
+  maxTokenLength?: number;
 }
 
 class WhitespaceTokenizer extends Tokenizer {
-  maxTokenLength: number;
+  private maxTokenLength: number;
 
-  constructor({ maxTokenLength }: WhitespaceTokenizerOptions) {
+  constructor({ maxTokenLength = 255 }: WhitespaceTokenizerOptions = {}) {
     super();
     this.maxTokenLength = maxTokenLength;
   }
 
-  static override async getInstance(options?: Partial<WhitespaceTokenizerOptions>) {
-    return new WhitespaceTokenizer({
-      maxTokenLength: options?.maxTokenLength ?? 255,
-    });
-  }
-
-  tokenize(str: string) {
+  override async tokenize(str: string) {
     const tokens: string[] = [];
     const segments = str.split(/\s+/).filter(Boolean);
     for (let i = 0; i < segments.length; i++) {

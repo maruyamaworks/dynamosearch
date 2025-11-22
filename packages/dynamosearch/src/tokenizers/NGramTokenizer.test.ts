@@ -2,8 +2,8 @@ import { test, expect } from 'vitest';
 import NGramTokenizer from './NGramTokenizer.js';
 
 test('NGramTokenizer', async () => {
-  const tokenizer = await NGramTokenizer.getInstance({ minGram: 1, maxGram: 2 });
-  const tokens = tokenizer.tokenize('Quick Fox');
+  const tokenizer = new NGramTokenizer({ minGram: 1, maxGram: 2 });
+  const tokens = await tokenizer.tokenize('Quick Fox');
   expect(tokens).toMatchObject([
     { text: 'Q' },
     { text: 'Qu' },

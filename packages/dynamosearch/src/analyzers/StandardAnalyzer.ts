@@ -11,12 +11,12 @@ export interface StandardAnalyzerOptions {
 }
 
 class StandardAnalyzer extends Analyzer {
-  static override async getInstance(options?: StandardAnalyzerOptions) {
-    return new StandardAnalyzer({
-      tokenizer: await StandardTokenizer.getInstance({ maxTokenLength: options?.maxTokenLength }),
+  constructor({ maxTokenLength = 255, stopWords = '_none_' }: StandardAnalyzerOptions = {}) {
+    super({
+      tokenizer: new StandardTokenizer({ maxTokenLength }),
       filters: [
         LowerCaseFilter(),
-        StopFilter({ stopWords: options?.stopWords ?? '_none_' }),
+        StopFilter({ stopWords }),
       ],
     });
   }

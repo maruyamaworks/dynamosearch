@@ -2,8 +2,8 @@ import { test, expect } from 'vitest';
 import LetterTokenizer from './LetterTokenizer.js';
 
 test('LetterTokenizer', async () => {
-  const tokenizer = await LetterTokenizer.getInstance();
-  const tokens = tokenizer.tokenize('The 2 QUICK Brown-Foxes jumped over the lazy dog\'s bone.');
+  const tokenizer = new LetterTokenizer();
+  const tokens = await tokenizer.tokenize('The 2 QUICK Brown-Foxes jumped over the lazy dog\'s bone.');
   expect(tokens).toMatchObject([
     { text: 'The' },
     { text: 'QUICK' },

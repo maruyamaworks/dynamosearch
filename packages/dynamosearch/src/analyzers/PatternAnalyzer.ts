@@ -13,12 +13,14 @@ export interface PatternAnalyzerOptions {
 }
 
 class PatternAnalyzer extends Analyzer {
-  static override async getInstance(options?: PatternAnalyzerOptions) {
-    return new PatternAnalyzer({
-      tokenizer: await PatternTokenizer.getInstance({ pattern: options?.pattern ?? /\W+/ }),
+  constructor({ pattern = /\W+/, lowercase = true, stopWords = '_none_' }: PatternAnalyzerOptions = {}) {
+    super({
+      tokenizer: new PatternTokenizer({ pattern }),
       filters: [
-        ...((options?.lowercase ?? true) ? [LowerCaseFilter()] : []),
-        StopFilter({ stopWords: options?.stopWords ?? '_none_' }),
+        ...(lowercase ? [
+          LowerCaseFilter(),
+        ] : []),
+        StopFilter({ stopWords }),
       ],
     });
   }

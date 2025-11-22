@@ -2,26 +2,22 @@ import Tokenizer from './Tokenizer.js';
 
 export interface URLEmailTokenizerOptions {
   /** The maximum token length. If a token is seen that exceeds this length then it is split at max_token_length intervals. */
-  maxTokenLength: number;
+  maxTokenLength?: number;
 }
 
-const URL_PATTERN = /https?:\/\/[\w/:%#$&?()~.=+-]+/g;
-
-// ref. https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address
-const EMAIL_PATTERN = /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*/g;
-
 class URLEmailTokenizer extends Tokenizer {
-  maxTokenLength: number;
+  private maxTokenLength: number;
 
-  constructor({ maxTokenLength }: URLEmailTokenizerOptions) {
+  static readonly URL_PATTERN = /https?:\/\/[\w/:%#$&?()~.=+-]+/g;
+
+  /**
+   * @see https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address
+   */
+  static readonly EMAIL_PATTERN = /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*/g;
+
+  constructor({ maxTokenLength = 255 }: URLEmailTokenizerOptions = {}) {
     super();
     this.maxTokenLength = maxTokenLength;
-  }
-
-  static override async getInstance(options?: Partial<URLEmailTokenizerOptions>) {
-    return new URLEmailTokenizer({
-      maxTokenLength: options?.maxTokenLength ?? 255,
-    });
   }
 
   private splitPattern(str: string, pattern: RegExp) {
@@ -37,10 +33,10 @@ class URLEmailTokenizer extends Tokenizer {
     return result.filter(({ text }) => text);
   }
 
-  tokenize(str: string) {
+  override async tokenize(str: string) {
     const tokens: string[] = [];
-    const segments = this.splitPattern(str, URL_PATTERN)
-      .flatMap(segment => segment.matched ? [segment] : this.splitPattern(segment.text, EMAIL_PATTERN))
+    const segments = this.splitPattern(str, URLEmailTokenizer.URL_PATTERN)
+      .flatMap(segment => segment.matched ? [segment] : this.splitPattern(segment.text, URLEmailTokenizer.EMAIL_PATTERN))
       .flatMap(segment => segment.matched ? [segment] : segment.text.split(/[-\s,.]+/).map(text => ({ text })));
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];

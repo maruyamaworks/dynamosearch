@@ -2,8 +2,8 @@ import { test, expect } from 'vitest';
 import PatternTokenizer from './PatternTokenizer.js';
 
 test('PatternTokenizer', async () => {
-  const tokenizer = await PatternTokenizer.getInstance();
-  const tokens = tokenizer.tokenize('The foo_bar_size\'s default is 5.');
+  const tokenizer = new PatternTokenizer();
+  const tokens = await tokenizer.tokenize('The foo_bar_size\'s default is 5.');
   expect(tokens).toMatchObject([
     { text: 'The' },
     { text: 'foo_bar_size' },
@@ -15,8 +15,8 @@ test('PatternTokenizer', async () => {
 });
 
 test('PatternTokenizer', async () => {
-  const tokenizer = await PatternTokenizer.getInstance({ pattern: /,/g });
-  const tokens = tokenizer.tokenize('comma,separated,values');
+  const tokenizer = new PatternTokenizer({ pattern: /,/g });
+  const tokens = await tokenizer.tokenize('comma,separated,values');
   expect(tokens).toMatchObject([
     { text: 'comma' },
     { text: 'separated' },
@@ -25,8 +25,8 @@ test('PatternTokenizer', async () => {
 });
 
 test('PatternTokenizer', async () => {
-  const tokenizer = await PatternTokenizer.getInstance({ pattern: /"((?:\\"|[^"]|\\")*)"/g, group: 1 });
-  const tokens = tokenizer.tokenize('"value", "value with embedded \\" quote"');
+  const tokenizer = new PatternTokenizer({ pattern: /"((?:\\"|[^"]|\\")*)"/g, group: 1 });
+  const tokens = await tokenizer.tokenize('"value", "value with embedded \\" quote"');
   expect(tokens).toMatchObject([
     { text: 'value' },
     { text: 'value with embedded \\" quote' },

@@ -2,8 +2,8 @@ import { test, expect } from 'vitest';
 import URLEmailTokenizer from './URLEmailTokenizer.js';
 
 test('URLEmailTokenizer', async () => {
-  const tokenizer = await URLEmailTokenizer.getInstance();
-  const tokens = tokenizer.tokenize('Contact us at support@example.com or visit https://example.com for details.');
+  const tokenizer = new URLEmailTokenizer();
+  const tokens = await tokenizer.tokenize('Contact us at support@example.com or visit https://example.com for details.');
   expect(tokens).toMatchObject([
     { text: 'Contact' },
     { text: 'us' },

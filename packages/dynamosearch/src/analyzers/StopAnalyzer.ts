@@ -8,11 +8,11 @@ export interface StopAnalyzerOptions {
 }
 
 class StopAnalyzer extends Analyzer {
-  static override async getInstance(options?: StopAnalyzerOptions) {
-    return new StopAnalyzer({
-      tokenizer: await LowerCaseTokenizer.getInstance(),
+  constructor({ stopWords = '_english_' }: StopAnalyzerOptions = {}) {
+    super({
+      tokenizer: new LowerCaseTokenizer(),
       filters: [
-        StopFilter({ stopWords: options?.stopWords ?? '_english_' }),
+        StopFilter({ stopWords }),
       ],
     });
   }

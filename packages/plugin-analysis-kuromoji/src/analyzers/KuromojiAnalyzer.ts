@@ -1,7 +1,7 @@
-import Analyzer from 'dynamosearch/analyzers/Analyzer.js';
-import CJKWidthFilter from 'dynamosearch/filters/CJKWidthFilter.js';
-import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter.js';
-import ICUNormalizer from 'dynamosearch/char_filters/ICUNormalizer.js';
+import Analyzer from 'dynamosearch/analyzers/Analyzer';
+import CJKWidthFilter from 'dynamosearch/filters/CJKWidthFilter';
+import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter';
+import ICUNormalizer from 'dynamosearch/char_filters/ICUNormalizer';
 import KuromojiTokenizer from '../tokenizers/KuromojiTokenizer.js';
 import KuromojiBaseFormFilter from '../filters/KuromojiBaseFormFilter.js';
 import KuromojiPartOfSpeechStopFilter from '../filters/KuromojiPartOfSpeechStopFilter.js';
@@ -9,12 +9,12 @@ import KuromojiKatakanaStemFilter from '../filters/KuromojiKatakanaStemFilter.js
 import JapaneseStopFilter from '../filters/JapaneseStopFilter.js';
 
 class KuromojiAnalyzer extends Analyzer {
-  static override async getInstance() {
-    return new KuromojiAnalyzer({
+  constructor() {
+    super({
       charFilters: [
         ICUNormalizer(),
       ],
-      tokenizer: await KuromojiTokenizer.getInstance(),
+      tokenizer: new KuromojiTokenizer(),
       filters: [
         KuromojiBaseFormFilter(),
         KuromojiPartOfSpeechStopFilter(),

@@ -2,8 +2,8 @@ import { test, expect } from 'vitest';
 import StopAnalyzer from './StopAnalyzer.js';
 
 test('StopAnalyzer', async () => {
-  const analyzer = await StopAnalyzer.getInstance();
-  const tokens = analyzer.analyze('The 2 QUICK Brown-Foxes jumped over the lazy dog\'s bone.');
+  const analyzer = new StopAnalyzer();
+  const tokens = await analyzer.analyze('The 2 QUICK Brown-Foxes jumped over the lazy dog\'s bone.');
   expect(tokens).toMatchObject([
     { text: 'quick' },
     { text: 'brown' },

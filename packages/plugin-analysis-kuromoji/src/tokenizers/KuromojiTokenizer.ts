@@ -1,9 +1,9 @@
 import { fileURLToPath } from 'node:url';
-import Tokenizer from 'dynamosearch/tokenizers/Tokenizer.js';
+import Tokenizer from 'dynamosearch/tokenizers/Tokenizer';
 import kuromoji, { type IpadicFeatures, type TokenizerBuilderOption } from 'kuromoji';
 
 export interface KuromojiTokenizerOptions extends TokenizerBuilderOption {
-  discardPunctuation: boolean;
+  discardPunctuation?: boolean;
 }
 
 const isPunctuation = (str: string) => {
@@ -12,35 +12,36 @@ const isPunctuation = (str: string) => {
 };
 
 class KuromojiTokenizer extends Tokenizer {
-  discardPunctuation: boolean;
-  tokenizer: kuromoji.Tokenizer<IpadicFeatures>;
+  private discardPunctuation: boolean;
+  private dicPath: string;
+  private tokenizerPromise?: Promise<kuromoji.Tokenizer<IpadicFeatures>>;
 
-  constructor({ discardPunctuation, tokenizer }: { discardPunctuation: boolean; tokenizer: kuromoji.Tokenizer<IpadicFeatures> }) {
+  constructor({ discardPunctuation = true, dicPath = 'kuromoji/dict' }: KuromojiTokenizerOptions = {}) {
     super();
     this.discardPunctuation = discardPunctuation;
-    this.tokenizer = tokenizer;
+    this.dicPath = dicPath;
   }
 
-  static override async getInstance(options?: Partial<KuromojiTokenizerOptions>) {
-    return new Promise<KuromojiTokenizer>((resolve, reject) => {
+  private async createTokenizer(dicPath: string) {
+    return new Promise<kuromoji.Tokenizer<IpadicFeatures>>((resolve, reject) => {
       const builder = kuromoji.builder({
-        dicPath: fileURLToPath(import.meta.resolve(options?.dicPath ?? 'kuromoji/dict')),
+        dicPath: fileURLToPath(import.meta.resolve(dicPath)),
       });
       builder.build((err, tokenizer) => {
         if (err) {
           reject(err);
         } else {
-          resolve(new KuromojiTokenizer({
-            discardPunctuation: options?.discardPunctuation ?? true,
-            tokenizer,
-          }));
+          resolve(tokenizer);
         }
       });
     });
   }
 
-  tokenize(str: string) {
-    const tokens = this.tokenizer.tokenize(str);
+  override async tokenize(str: string) {
+    if (!this.tokenizerPromise) {
+      this.tokenizerPromise = this.createTokenizer(this.dicPath);
+    }
+    const tokens = (await this.tokenizerPromise).tokenize(str);
     return tokens.filter(token => !(this.discardPunctuation && isPunctuation(token.surface_form))).map(token => ({
       text: token.surface_form,
       metadata: token,
