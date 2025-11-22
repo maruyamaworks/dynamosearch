@@ -2,7 +2,7 @@ import cluster from 'node:cluster';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { availableParallelism } from 'node:os';
 import DynamoSearch from 'dynamosearch';
-import KuromojiAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/KuromojiAnalyzer.js';
+import KuromojiAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/KuromojiAnalyzer';
 import { asyncBufferFromFile, parquetReadObjects } from 'hyparquet';
 
 if (cluster.isPrimary) {
@@ -64,7 +64,7 @@ if (cluster.isWorker) {
   let count = 0;
   const resultMap = new Map<string, number>();
 
-  const analyzer = await KuromojiAnalyzer.getInstance();
+  const analyzer = new KuromojiAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch-demo-products-jp-index',
     attributes: [

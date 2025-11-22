@@ -1,5 +1,5 @@
 import DynamoSearch from 'dynamosearch';
-import KuromojiAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/KuromojiAnalyzer.js';
+import KuromojiAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/KuromojiAnalyzer';
 import { asyncBufferFromFile, parquetReadObjects } from 'hyparquet';
 
 if (!process.argv[2]) {
@@ -10,7 +10,7 @@ const file = await asyncBufferFromFile('./shopping_queries_dataset_products.parq
 const products = await parquetReadObjects({ file });
 console.log(`${products.length} products loaded`);
 
-const analyzer = await KuromojiAnalyzer.getInstance();
+const analyzer = new KuromojiAnalyzer();
 const dynamosearch = new DynamoSearch({
   indexTableName: 'dynamosearch-demo-products-jp-index',
   attributes: [

@@ -1,5 +1,5 @@
 import DynamoSearch from 'dynamosearch';
-import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer.js';
+import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer';
 import type { APIGatewayProxyHandler } from 'aws-lambda';
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -14,7 +14,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   try {
-    const analyzer = await StandardAnalyzer.getInstance();
+    const analyzer = new StandardAnalyzer();
     const dynamosearch = new DynamoSearch({
       indexTableName: process.env.INDEX_TABLE_NAME!,
       attributes: [
