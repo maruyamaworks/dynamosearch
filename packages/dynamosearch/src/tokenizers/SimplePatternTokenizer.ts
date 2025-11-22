@@ -20,8 +20,8 @@ class SimplePatternTokenizer extends Tokenizer {
   }
 
   tokenize(str: string) {
-    const matches = str.match(this.pattern);
-    return matches?.map(token => ({ text: token })) ?? [];
+    const matches = [...str.matchAll(this.pattern)];
+    return matches.map(token => ({ text: token[0] }));
   }
 }
 
