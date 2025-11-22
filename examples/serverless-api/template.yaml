@@ -56,7 +56,6 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: KEYS_ONLY
-      LocalSecondaryIndexes:
         - IndexName: hash-index
           KeySchema:
             - AttributeName: p
