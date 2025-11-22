@@ -21,10 +21,10 @@ Reindex all documents in your table.
 ```typescript
 import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb';
 import DynamoSearch from 'dynamosearch';
-import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer.js';
+import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer';
 
 const client = new DynamoDBClient({});
-const analyzer = await StandardAnalyzer.getInstance();
+const analyzer = new StandardAnalyzer();
 const dynamosearch = new DynamoSearch({
   indexTableName: 'search-index',
   attributes: [

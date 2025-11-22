@@ -5,7 +5,7 @@
 Japanese morphological analyzer using Kuromoji.
 
 ```typescript
-import KuromojiTokenizer from '@dynamosearch/plugin-analysis-kuromoji/tokenizers/KuromojiTokenizer.js';
+import KuromojiTokenizer from '@dynamosearch/plugin-analysis-kuromoji/tokenizers/KuromojiTokenizer';
 ```
 
 ### Installation
@@ -17,7 +17,7 @@ npm install @dynamosearch/plugin-analysis-kuromoji
 ### Usage
 
 ```typescript
-const tokenizer = await KuromojiTokenizer.getInstance();
+const tokenizer = new KuromojiTokenizer();
 const tokens = tokenizer.tokenize('すもももももももものうち');
 // [
 //   { text: 'すもも' },

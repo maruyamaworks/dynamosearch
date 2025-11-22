@@ -11,15 +11,15 @@ An analyzer consists of three components:
 3. **Token Filters** (0 or more): Transform tokens
 
 ```typescript
-import Analyzer from 'dynamosearch/analyzers/Analyzer.js';
-import StandardTokenizer from 'dynamosearch/tokenizers/StandardTokenizer.js';
-import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter.js';
+import Analyzer from 'dynamosearch/analyzers/Analyzer';
+import StandardTokenizer from 'dynamosearch/tokenizers/StandardTokenizer';
+import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter';
 
 class MyAnalyzer extends Analyzer {
-  static async getInstance() {
-    return new MyAnalyzer({
+  constructor() {
+    super({
       charFilters: [],
-      tokenizer: await StandardTokenizer.getInstance(),
+      tokenizer: new StandardTokenizer(),
       filters: [LowerCaseFilter()]
     });
   }
@@ -39,16 +39,16 @@ const htmlStripFilter = (str: string): string => {
 
 // Usage
 class HtmlAnalyzer extends Analyzer {
-  static async getInstance() {
-    return new HtmlAnalyzer({
+  constructor() {
+    super({
       charFilters: [htmlStripFilter],
-      tokenizer: await StandardTokenizer.getInstance(),
+      tokenizer: new StandardTokenizer(),
       filters: [LowerCaseFilter()]
     });
   }
 }
 
-const analyzer = await HtmlAnalyzer.getInstance();
+const analyzer = new HtmlAnalyzer();
 analyzer.analyze('<p>Hello <strong>World</strong></p>');
 // [{ text: 'hello' }, { text: 'world' }]
 ```
@@ -64,16 +64,16 @@ const patternReplaceFilter = (pattern: RegExp, replacement: string) => {
 const phoneFilter = patternReplaceFilter(/[()-\s]/g, '');
 
 class PhoneAnalyzer extends Analyzer {
-  static async getInstance() {
-    return new PhoneAnalyzer({
+  constructor() {
+    super({
       charFilters: [phoneFilter],
-      tokenizer: await KeywordTokenizer.getInstance(),
+      tokenizer: new KeywordTokenizer(),
       filters: []
     });
   }
 }
 
-const analyzer = await PhoneAnalyzer.getInstance();
+const analyzer = new PhoneAnalyzer();
 analyzer.analyze('(555) 123-4567');
 // [{ text: '5551234567' }]
 ```
@@ -106,7 +106,7 @@ Tokenizers must implement the Tokenizer interface:
 
 ```typescript
 abstract class Tokenizer {
-  static async getInstance(): Promise<Tokenizer> {
+  constructor(): Promise<Tokenizer> {
     throw new Error('Not implemented');
   }
 
@@ -117,11 +117,11 @@ abstract class Tokenizer {
 ### Email Tokenizer
 
 ```typescript
-import Tokenizer from 'dynamosearch/tokenizers/Tokenizer.js';
+import Tokenizer from 'dynamosearch/tokenizers/Tokenizer';
 
 class EmailTokenizer extends Tokenizer {
-  static async getInstance() {
-    return new EmailTokenizer();
+  constructor() {
+    super();
   }
 
   tokenize(str: string) {
@@ -131,7 +131,7 @@ class EmailTokenizer extends Tokenizer {
 }
 
 // Usage
-const tokenizer = await EmailTokenizer.getInstance();
+const tokenizer = new EmailTokenizer();
 tokenizer.tokenize('Contact us at support@example.com or sales@example.com');
 // [{ text: 'support@example.com' }, { text: 'sales@example.com' }]
 ```
@@ -140,8 +140,8 @@ tokenizer.tokenize('Contact us at support@example.com or sales@example.com');
 
 ```typescript
 class WhitespaceTokenizer extends Tokenizer {
-  static async getInstance() {
-    return new WhitespaceTokenizer();
+  constructor() {
+    super();
   }
 
   tokenize(str: string) {
@@ -152,7 +152,7 @@ class WhitespaceTokenizer extends Tokenizer {
 }
 
 // Usage
-const tokenizer = await WhitespaceTokenizer.getInstance();
+const tokenizer = new WhitespaceTokenizer();
 tokenizer.tokenize('hello   world\n\tfoo');
 // [{ text: 'hello' }, { text: 'world' }, { text: 'foo' }]
 ```
@@ -161,8 +161,8 @@ tokenizer.tokenize('hello   world\n\tfoo');
 
 ```typescript
 class UrlTokenizer extends Tokenizer {
-  static async getInstance() {
-    return new UrlTokenizer();
+  constructor() {
+    super();
   }
 
   tokenize(str: string) {
@@ -179,7 +179,7 @@ Token filters transform or remove tokens.
 ### Stop Words Filter
 
 ```typescript
-import type { TokenFilter } from 'dynamosearch/analyzers/Analyzer.js';
+import type { TokenFilter } from 'dynamosearch/analyzers/Analyzer';
 
 const stopWordsFilter = (stopWords: string[]): TokenFilter => {
   const stopWordsSet = new Set(stopWords.map(w => w.toLowerCase()));
@@ -193,10 +193,10 @@ const englishStopWords = [
 ];
 
 class EnglishAnalyzer extends Analyzer {
-  static async getInstance() {
-    return new EnglishAnalyzer({
+  constructor() {
+    super({
       charFilters: [],
-      tokenizer: await StandardTokenizer.getInstance(),
+      tokenizer: new StandardTokenizer(),
       filters: [
         LowerCaseFilter(),
         stopWordsFilter(englishStopWords)
@@ -205,7 +205,7 @@ class EnglishAnalyzer extends Analyzer {
   }
 }
 
-const analyzer = await EnglishAnalyzer.getInstance();
+const analyzer = new EnglishAnalyzer();
 analyzer.analyze('The quick brown fox');
 // [{ text: 'quick' }, { text: 'brown' }, { text: 'fox' }]
 ```
@@ -222,10 +222,10 @@ const lengthFilter = (min: number, max?: number): TokenFilter => {
 
 // Usage: Remove very short and very long tokens
 class LengthAnalyzer extends Analyzer {
-  static async getInstance() {
-    return new LengthAnalyzer({
+  constructor() {
+    super({
       charFilters: [],
-      tokenizer: await StandardTokenizer.getInstance(),
+      tokenizer: new StandardTokenizer(),
       filters: [
         LowerCaseFilter(),
         lengthFilter(3, 20)  // Keep tokens between 3-20 chars
@@ -253,10 +253,10 @@ const uniqueFilter = (): TokenFilter => {
 
 // Usage: Remove duplicate tokens
 class UniqueAnalyzer extends Analyzer {
-  static async getInstance() {
-    return new UniqueAnalyzer({
+  constructor() {
+    super({
       charFilters: [],
-      tokenizer: await StandardTokenizer.getInstance(),
+      tokenizer: new StandardTokenizer(),
       filters: [
         LowerCaseFilter(),
         uniqueFilter()
@@ -265,7 +265,7 @@ class UniqueAnalyzer extends Analyzer {
   }
 }
 
-const analyzer = await UniqueAnalyzer.getInstance();
+const analyzer = new UniqueAnalyzer();
 analyzer.analyze('hello world hello');
 // [{ text: 'hello' }, { text: 'world' }]
 ```
@@ -305,8 +305,8 @@ const asciiFoldingFilter = (): TokenFilter => {
 };
 
 // Usage: Convert accented characters to ASCII
-const analyzer = await Analyzer.getInstance({
-  tokenizer: await StandardTokenizer.getInstance(),
+const analyzer = new Analyzer({
+  tokenizer: new StandardTokenizer(),
   filters: [asciiFoldingFilter(), LowerCaseFilter()]
 });
 
@@ -319,25 +319,25 @@ analyzer.analyze('café résumé naïve');
 ### Code Search Analyzer
 
 ```typescript
-import Analyzer from 'dynamosearch/analyzers/Analyzer.js';
-import StandardTokenizer from 'dynamosearch/tokenizers/StandardTokenizer.js';
-import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter.js';
+import Analyzer from 'dynamosearch/analyzers/Analyzer';
+import StandardTokenizer from 'dynamosearch/tokenizers/StandardTokenizer';
+import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter';
 
 const camelCaseSplitFilter = (str: string): string => {
   return str.replace(/([a-z])([A-Z])/g, '$1 $2');
 };
 
 class CodeAnalyzer extends Analyzer {
-  static async getInstance() {
-    return new CodeAnalyzer({
+  constructor() {
+    super({
       charFilters: [camelCaseSplitFilter],
-      tokenizer: await StandardTokenizer.getInstance(),
+      tokenizer: new StandardTokenizer(),
       filters: [LowerCaseFilter()]
     });
   }
 }
 
-const analyzer = await CodeAnalyzer.getInstance();
+const analyzer = new CodeAnalyzer();
 analyzer.analyze('getUserById calculateTotalPrice');
 // [
 //   { text: 'get' }, { text: 'user' }, { text: 'by' }, { text: 'id' },
@@ -355,7 +355,7 @@ const synonymFilter = (synonyms: Record<string, string>): TokenFilter => {
 };
 
 class ProductAnalyzer extends Analyzer {
-  static async getInstance() {
+  constructor() {
     const productSynonyms = {
       'tv': 'television',
       'pc': 'computer',
@@ -364,9 +364,9 @@ class ProductAnalyzer extends Analyzer {
       'cellphone': 'smartphone'
     };
 
-    return new ProductAnalyzer({
+    super({
       charFilters: [],
-      tokenizer: await StandardTokenizer.getInstance(),
+      tokenizer: new StandardTokenizer(),
       filters: [
         LowerCaseFilter(),
         synonymFilter(productSynonyms)
@@ -390,10 +390,10 @@ const abbreviationFilter = mappingFilter({
 });
 
 class AddressAnalyzer extends Analyzer {
-  static async getInstance() {
-    return new AddressAnalyzer({
+  constructor() {
+    super({
       charFilters: [abbreviationFilter],
-      tokenizer: await StandardTokenizer.getInstance(),
+      tokenizer: new StandardTokenizer(),
       filters: [LowerCaseFilter()]
     });
   }
@@ -405,7 +405,7 @@ class AddressAnalyzer extends Analyzer {
 Always test your analyzer with sample data:
 
 ```typescript
-const analyzer = await MyAnalyzer.getInstance();
+const analyzer = new MyAnalyzer();
 
 const testCases = [
   'Hello World!',

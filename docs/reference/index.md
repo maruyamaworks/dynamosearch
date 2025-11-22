@@ -22,9 +22,9 @@ Creates a new DynamoSearch instance.
 
 ```typescript
 import DynamoSearch from 'dynamosearch';
-import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer.js';
+import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer';
 
-const analyzer = await StandardAnalyzer.getInstance();
+const analyzer = new StandardAnalyzer();
 
 const dynamosearch = new DynamoSearch({
   indexTableName: 'my-search-index',
@@ -323,10 +323,10 @@ await dynamosearch.exportTokensAsFile('tokens.jsonl', item);
 Set `metadata: false` when processing multiple items, then manually write a single metadata record at the end to avoid duplicate metadata entries.
 :::
 
-## getMetadata()
+## getIndexMetadata()
 
 ```typescript
-async getMetadata(): Promise<Metadata>
+async getIndexMetadata(): Promise<Metadata>
 ```
 
 Retrieves index metadata used for BM25 calculations.
@@ -343,7 +343,7 @@ interface Metadata {
 ### Example
 
 ```typescript
-const metadata = await dynamosearch.getMetadata();
+const metadata = await dynamosearch.getIndexMetadata();
 
 console.log('Total documents:', metadata.docCount);
 console.log('Token counts:', metadata.tokenCount);

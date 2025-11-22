@@ -8,12 +8,14 @@ Token filters transform or remove tokens after tokenization.
 type TokenFilter = (tokens: { text: string }[]) => { text: string }[];
 ```
 
+Token filters are functions that receive an array of tokens and return a transformed array.
+
 ## LowerCaseFilter
 
 Converts all tokens to lowercase.
 
 ```typescript
-import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter.js';
+import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter';
 ```
 
 ### Usage
@@ -23,7 +25,7 @@ const filter = LowerCaseFilter();
 const tokens = filter([
   { text: 'Hello' },
   { text: 'WORLD' },
-  { text: 'JavaScript' }
+  { text: 'JavaScript' },
 ]);
 // [
 //   { text: 'hello' },
@@ -38,12 +40,42 @@ const tokens = filter([
 - Normalizing English text
 - Most text search applications
 
+## UpperCaseFilter
+
+Converts all tokens to uppercase.
+
+```typescript
+import UpperCaseFilter from 'dynamosearch/filters/UpperCaseFilter';
+```
+
+### Usage
+
+```typescript
+const filter = UpperCaseFilter();
+const tokens = filter([
+  { text: 'hello' },
+  { text: 'world' },
+  { text: 'JavaScript' },
+]);
+// [
+//   { text: 'HELLO' },
+//   { text: 'WORLD' },
+//   { text: 'JAVASCRIPT' }
+// ]
+```
+
+### Best For
+
+- Uppercase normalization
+- Legacy system integration
+- Special display requirements
+
 ## CJKWidthFilter
 
 Normalizes CJK (Chinese, Japanese, Korean) character widths.
 
 ```typescript
-import CJKWidthFilter from 'dynamosearch/filters/CJKWidthFilter.js';
+import CJKWidthFilter from 'dynamosearch/filters/CJKWidthFilter';
 ```
 
 ### Usage
@@ -51,9 +83,9 @@ import CJKWidthFilter from 'dynamosearch/filters/CJKWidthFilter.js';
 ```typescript
 const filter = CJKWidthFilter();
 const tokens = filter([
-  { text: 'ＡＢＣ' },  // Full-width
-  { text: 'ａｂｃ' },  // Full-width
-  { text: '１２３' }   // Full-width
+  { text: 'ＡＢＣ' }, // Full-width
+  { text: 'ａｂｃ' }, // Full-width
+  { text: '１２３' }, // Full-width
 ]);
 // [
 //   { text: 'ABC' },    // Half-width
@@ -64,10 +96,8 @@ const tokens = filter([
 
 ### Conversions
 
-- Full-width → Half-width Latin letters
-- Full-width → Half-width digits
-- Full-width → Half-width punctuation
-- Katakana normalization
+- Half-width katakana → Full-width katakana
+- Full-width alphanumeric → Half-width alphanumeric
 
 ### Best For
 
@@ -75,148 +105,392 @@ const tokens = filter([
 - Mixed Japanese/English content
 - CJK text normalization
 
-## Custom Filters
+## StopFilter
 
-### Stop Words Filter
-
-Remove common words:
+Removes stop words from the token stream.
 
 ```typescript
-const stopWordsFilter = (stopWords: string[]): TokenFilter => {
-  const stopWordsSet = new Set(stopWords.map(w => w.toLowerCase()));
-  return (tokens) => tokens.filter(
-    token => !stopWordsSet.has(token.text.toLowerCase())
-  );
-};
+import StopFilter from 'dynamosearch/filters/StopFilter';
+```
 
-// Usage
-const englishStopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on'];
-const filter = stopWordsFilter(englishStopWords);
+### Constructor
 
+```typescript
+StopFilter(options?: { stopWords?: '_english_' | '_none_' | string[] })
+```
+
+**Parameters:**
+- **stopWords** (`'_english_' | '_none_' | string[]`, optional) - Stop words to remove (default: `'_english_'`)
+
+### Usage
+
+```typescript
+// Built-in English stop words
+const filter = StopFilter({ stopWords: '_english_' });
 const tokens = filter([
   { text: 'the' },
   { text: 'quick' },
   { text: 'brown' },
-  { text: 'fox' }
+  { text: 'fox' },
 ]);
 // [{ text: 'quick' }, { text: 'brown' }, { text: 'fox' }]
+
+// Custom stop words
+const customFilter = StopFilter({ stopWords: ['quick', 'brown'] });
+const tokens2 = customFilter([
+  { text: 'the' },
+  { text: 'quick' },
+  { text: 'brown' },
+  { text: 'fox' },
+]);
+// [{ text: 'the' }, { text: 'fox' }]
+
+// No stop words
+const noFilter = StopFilter({ stopWords: '_none_' });
 ```
 
-### Length Filter
+### Available Stop Word Lists
 
-Keep tokens within length range:
+- **_english_** - Common English stop words (the, a, an, and, or, but, etc.)
+- **_none_** - Empty list (no filtering)
+- **Custom array** - Your own list of stop words
+
+### Best For
+
+- English text search
+- Reducing index size
+- Improving search relevance
+- Filtering common words
+
+## LengthFilter
+
+Filters out tokens outside a specified length range.
 
 ```typescript
-const lengthFilter = (min: number, max?: number): TokenFilter => {
-  return (tokens) => tokens.filter(token => {
-    const len = token.text.length;
-    return len >= min && (!max || len <= max);
-  });
-};
+import LengthFilter from 'dynamosearch/filters/LengthFilter';
+```
 
-// Usage
-const filter = lengthFilter(3, 20);
+### Constructor
+
+```typescript
+LengthFilter(options?: { min?: number; max?: number })
+```
+
+**Parameters:**
+- **min** (`number`, optional) - Minimum character length (default: `0`)
+- **max** (`number`, optional) - Maximum character length (default: `2147483647`)
+
+### Usage
+
+```typescript
+const filter = LengthFilter({ min: 3, max: 20 });
 const tokens = filter([
-  { text: 'hi' },      // Too short
-  { text: 'hello' },   // OK
-  { text: 'a' },       // Too short
-  { text: 'verylongwordthatexceedslimit' }  // Too long
+  { text: 'hi' }, // Too short
+  { text: 'hello' }, // OK
+  { text: 'a' }, // Too short
+  { text: 'verylongwordthatexceedslimit' }, // Too long
 ]);
 // [{ text: 'hello' }]
 ```
 
-### Unique Filter
+### Best For
 
-Remove duplicate tokens:
+- Removing very short tokens
+- Limiting token length
+- Quality filtering
+
+## TruncateFilter
+
+Truncates tokens exceeding a specified length.
 
 ```typescript
-const uniqueFilter = (): TokenFilter => {
-  return (tokens) => {
-    const seen = new Set<string>();
-    return tokens.filter(token => {
-      if (seen.has(token.text)) {
-        return false;
-      }
-      seen.add(token.text);
-      return true;
-    });
-  };
-};
+import TruncateFilter from 'dynamosearch/filters/TruncateFilter';
+```
 
-// Usage
-const filter = uniqueFilter();
+### Constructor
+
+```typescript
+TruncateFilter(options?: { length?: number })
+```
+
+**Parameters:**
+- **length** (`number`, optional) - Maximum character length (default: `10`)
+
+### Usage
+
+```typescript
+const filter = TruncateFilter({ length: 5 });
+const tokens = filter([
+  { text: 'hello' }, // 5 chars - unchanged
+  { text: 'world' }, // 5 chars - unchanged
+  { text: 'truncate' }, // 8 chars - truncated
+]);
+// [
+//   { text: 'hello' },
+//   { text: 'world' },
+//   { text: 'trunc' }
+// ]
+```
+
+### Best For
+
+- Limiting token length
+- Storage optimization
+- Prefix matching
+
+## LimitTokenCountFilter
+
+Limits the total number of tokens output.
+
+```typescript
+import LimitTokenCountFilter from 'dynamosearch/filters/LimitTokenCountFilter';
+```
+
+### Constructor
+
+```typescript
+LimitTokenCountFilter(options?: { maxTokenCount?: number })
+```
+
+**Parameters:**
+- **maxTokenCount** (`number`, optional) - Maximum number of tokens to keep (default: `1`)
+
+### Usage
+
+```typescript
+const filter = LimitTokenCountFilter({ maxTokenCount: 3 });
+const tokens = filter([
+  { text: 'first' },
+  { text: 'second' },
+  { text: 'third' },
+  { text: 'fourth' },
+  { text: 'fifth' },
+]);
+// [
+//   { text: 'first' },
+//   { text: 'second' },
+//   { text: 'third' }
+// ]
+```
+
+### Best For
+
+- Limiting index size
+- Taking first N tokens
+- Title/heading analysis
+
+## ReverseStringFilter
+
+Reverses each token character-by-character.
+
+```typescript
+import ReverseStringFilter from 'dynamosearch/filters/ReverseStringFilter';
+```
+
+### Usage
+
+```typescript
+const filter = ReverseStringFilter();
 const tokens = filter([
   { text: 'hello' },
   { text: 'world' },
-  { text: 'hello' },  // Duplicate
-  { text: 'world' }   // Duplicate
+]);
+// [
+//   { text: 'olleh' },
+//   { text: 'dlrow' }
+// ]
+```
+
+### Best For
+
+- Suffix matching
+- Reverse wildcard search
+- Specialized search patterns
+
+## PorterStemFilter
+
+Applies Porter stemming algorithm for English.
+
+```typescript
+import PorterStemFilter from 'dynamosearch/filters/PorterStemFilter';
+```
+
+### Usage
+
+```typescript
+const filter = PorterStemFilter();
+const tokens = filter([
+  { text: 'running' },
+  { text: 'runs' },
+  { text: 'ran' },
+  { text: 'runner' },
+]);
+// [
+//   { text: 'run' },
+//   { text: 'run' },
+//   { text: 'ran' },
+//   { text: 'runner' }
+// ]
+```
+
+### Best For
+
+- English text search
+- Finding word variants
+- Improving recall
+- Reducing index size
+
+## SnowballFilter
+
+Applies Snowball stemming algorithm for multiple languages.
+
+```typescript
+import SnowballFilter from 'dynamosearch/filters/SnowballFilter';
+```
+
+### Constructor
+
+```typescript
+SnowballFilter(options?: { language?: string })
+```
+
+**Parameters:**
+- **language** (`string`, optional) - Stemmer language (default: `'English'`)
+
+### Supported Languages
+
+- Arabic, Armenian, Basque, Catalan, Danish, Dutch, DutchPorter, English
+- Esperanto, Estonian, Finnish, French, German, Greek, Hindi, Hungarian
+- Indonesian, Irish, Italian, Lithuanian, Nepali, Norwegian, Polish, Porter
+- Portuguese, Romanian, Russian, Serbian, Spanish, Swedish, Tamil, Turkish, Yiddish
+
+### Usage
+
+```typescript
+// English
+const enFilter = SnowballFilter({ language: 'English' });
+const tokens1 = enFilter([
+  { text: 'running' },
+  { text: 'runs' },
+  { text: 'runner' },
+]);
+// [{ text: 'run' }, { text: 'run' }, { text: 'runner' }]
+
+// French
+const frFilter = SnowballFilter({ language: 'French' });
+const tokens2 = frFilter([
+  { text: 'chevaux' },
+  { text: 'cheval' },
+]);
+// [{ text: 'cheval' }, { text: 'cheval' }]
+
+// Spanish
+const esFilter = SnowballFilter({ language: 'Spanish' });
+const tokens3 = esFilter([
+  { text: 'corriendo' },
+  { text: 'correr' },
+]);
+// [{ text: 'corr' }, { text: 'corr' }]
+```
+
+### Best For
+
+- Multilingual search
+- Finding word variants
+- Improving recall across languages
+- Normalizing word forms
+
+## TrimFilter
+
+Removes leading and trailing whitespace from tokens.
+
+```typescript
+import TrimFilter from 'dynamosearch/filters/TrimFilter';
+```
+
+### Usage
+
+```typescript
+const filter = TrimFilter();
+const tokens = filter([
+  { text: '  hello  ' },
+  { text: 'world\t' },
+  { text: '\n test ' },
+]);
+// [
+//   { text: 'hello' },
+//   { text: 'world' },
+//   { text: 'test' }
+// ]
+```
+
+### Best For
+
+- Cleaning whitespace from tokens
+- Normalizing text input
+- Processing user input
+
+## UniqueFilter
+
+Removes duplicate tokens from the token stream.
+
+```typescript
+import UniqueFilter from 'dynamosearch/filters/UniqueFilter';
+```
+
+### Usage
+
+```typescript
+const filter = UniqueFilter();
+const tokens = filter([
+  { text: 'hello' },
+  { text: 'world' },
+  { text: 'hello' }, // Duplicate
+  { text: 'world' }, // Duplicate
 ]);
 // [{ text: 'hello' }, { text: 'world' }]
 ```
 
-### Uppercase Filter
+### Best For
 
-Convert to uppercase:
+- Removing duplicate tokens
+- Reducing index size
+- Deduplicating n-gram output
+
+## ASCIIFoldingFilter
+
+Converts accented characters to their ASCII equivalents.
 
 ```typescript
-const uppercaseFilter = (): TokenFilter => {
-  return (tokens) => tokens.map(token => ({
-    text: token.text.toUpperCase()
-  }));
-};
+import ASCIIFoldingFilter from 'dynamosearch/filters/ASCIIFoldingFilter';
 ```
 
-### ASCII Folding Filter
-
-Convert accented characters to ASCII:
+### Usage
 
 ```typescript
-const asciiFoldingFilter = (): TokenFilter => {
-  return (tokens) => tokens.map(token => ({
-    text: token.text.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  }));
-};
-
-// Usage
-const filter = asciiFoldingFilter();
+const filter = ASCIIFoldingFilter();
 const tokens = filter([
   { text: 'café' },
   { text: 'résumé' },
-  { text: 'naïve' }
+  { text: 'naïve' },
+  { text: 'Zürich' },
 ]);
 // [
 //   { text: 'cafe' },
 //   { text: 'resume' },
-//   { text: 'naive' }
+//   { text: 'naive' },
+//   { text: 'Zurich' }
 // ]
 ```
 
-### Stemming Filter (Simple)
+### Best For
 
-Basic English stemming:
+- Normalizing international text
+- Language-agnostic search
+- Handling user input with accents
+- Improving search recall
 
-```typescript
-const simpleStemFilter = (): TokenFilter => {
-  const rules: [RegExp, string][] = [
-    [/ies$/, 'y'],   // berries → berry
-    [/es$/, ''],     // boxes → box
-    [/s$/, ''],      // cats → cat
-    [/ing$/, ''],    // running → runn
-    [/ed$/, '']      // walked → walk
-  ];
-
-  return (tokens) => tokens.map(token => {
-    let text = token.text;
-    for (const [pattern, replacement] of rules) {
-      if (pattern.test(text)) {
-        text = text.replace(pattern, replacement);
-        break;
-      }
-    }
-    return { text };
-  });
-};
-```
+## Custom Filters
 
 ### Synonym Filter
 
@@ -224,36 +498,72 @@ Replace words with synonyms:
 
 ```typescript
 const synonymFilter = (synonyms: Record<string, string>): TokenFilter => {
-  return (tokens) => tokens.map(token => ({
-    text: synonyms[token.text.toLowerCase()] || token.text
-  }));
+  return (tokens) =>
+    tokens.map((token) => ({
+      text: synonyms[token.text.toLowerCase()] || token.text,
+    }));
 };
 
 // Usage
 const productSynonyms = {
-  'tv': 'television',
-  'pc': 'computer',
-  'phone': 'smartphone'
+  tv: 'television',
+  pc: 'computer',
+  phone: 'smartphone',
 };
 
 const filter = synonymFilter(productSynonyms);
-const tokens = filter([
-  { text: 'tv' },
-  { text: 'pc' }
-]);
+const tokens = filter([{ text: 'tv' }, { text: 'pc' }]);
 // [{ text: 'television' }, { text: 'computer' }]
 ```
 
-### Trim Filter
+### Simple Stem Filter
 
-Remove leading/trailing whitespace:
+Basic English stemming:
 
 ```typescript
-const trimFilter = (): TokenFilter => {
-  return (tokens) => tokens
-    .map(token => ({ text: token.text.trim() }))
-    .filter(token => token.text.length > 0);
+const simpleStemFilter = (): TokenFilter => {
+  const rules: [RegExp, string][] = [
+    [/ies$/, 'y'], // berries → berry
+    [/es$/, ''], // boxes → box
+    [/s$/, ''], // cats → cat
+    [/ing$/, ''], // running → runn
+    [/ed$/, ''], // walked → walk
+  ];
+
+  return (tokens) =>
+    tokens.map((token) => {
+      let text = token.text;
+      for (const [pattern, replacement] of rules) {
+        if (pattern.test(text)) {
+          text = text.replace(pattern, replacement);
+          break;
+        }
+      }
+      return { text };
+    });
 };
+```
+
+### Word Delimiter Filter
+
+Split tokens on delimiters:
+
+```typescript
+const wordDelimiterFilter = (): TokenFilter => {
+  return (tokens) => {
+    const result: { text: string }[] = [];
+    for (const token of tokens) {
+      const parts = token.text.split(/[-_]/);
+      result.push(...parts.map((text) => ({ text })));
+    }
+    return result;
+  };
+};
+
+// Usage
+const filter = wordDelimiterFilter();
+const tokens = filter([{ text: 'hello-world_foo' }]);
+// [{ text: 'hello' }, { text: 'world' }, { text: 'foo' }]
 ```
 
 ## Filter Chains
@@ -261,26 +571,23 @@ const trimFilter = (): TokenFilter => {
 Combine multiple filters:
 
 ```typescript
-import Analyzer from 'dynamosearch/analyzers/Analyzer.js';
-import StandardTokenizer from 'dynamosearch/tokenizers/StandardTokenizer.js';
-import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter.js';
+import Analyzer from 'dynamosearch/analyzers/Analyzer';
+import StandardTokenizer from 'dynamosearch/tokenizers/StandardTokenizer';
+import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter';
+import StopFilter from 'dynamosearch/filters/StopFilter';
+import LengthFilter from 'dynamosearch/filters/LengthFilter';
 
 class CustomAnalyzer extends Analyzer {
-  static async getInstance() {
-    const stopWords = ['the', 'a', 'an'];
-
-    return new CustomAnalyzer({
-      charFilters: [
-        htmlStripFilter,
-        whitespaceNormalizer
-      ],
-      tokenizer: await StandardTokenizer.getInstance(),
+  constructor() {
+    super({
+      charFilters: [],
+      tokenizer: new StandardTokenizer(),
       filters: [
         LowerCaseFilter(),
-        stopWordsFilter(stopWords),
-        lengthFilter(3, 20),
-        uniqueFilter()
-      ]
+        StopFilter({ stopWords: '_english_' }),
+        LengthFilter({ min: 3, max: 20 }),
+        PorterStemFilter(),
+      ],
     });
   }
 }

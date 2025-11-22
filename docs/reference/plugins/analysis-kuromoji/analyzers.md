@@ -5,7 +5,7 @@
 Japanese text analyzer using Kuromoji morphological analysis.
 
 ```typescript
-import KuromojiAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/KuromojiAnalyzer.js';
+import KuromojiAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/KuromojiAnalyzer';
 ```
 
 ### Installation
@@ -22,7 +22,7 @@ npm install @dynamosearch/plugin-analysis-kuromoji
 ### Usage
 
 ```typescript
-const analyzer = await KuromojiAnalyzer.getInstance();
+const analyzer = new KuromojiAnalyzer();
 const tokens = analyzer.analyze('東京タワーに行きました');
 // [
 //   { text: '東京' },

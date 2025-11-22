@@ -15,7 +15,7 @@ Kuromoji token filters work with tokens that may include metadata from morpholog
 Converts tokens to their base (dictionary) form using morphological analysis.
 
 ```typescript
-import KuromojiBaseFormFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiBaseFormFilter.js';
+import KuromojiBaseFormFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiBaseFormFilter';
 ```
 
 ### Usage
@@ -51,7 +51,7 @@ const tokens = filter([
 Removes tokens based on their part-of-speech tags.
 
 ```typescript
-import KuromojiPartOfSpeechStopFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiPartOfSpeechStopFilter.js';
+import KuromojiPartOfSpeechStopFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiPartOfSpeechStopFilter';
 ```
 
 ### Usage
@@ -104,7 +104,7 @@ Constructs a POS tag by joining `pos`, `pos_detail_1`, `pos_detail_2`, `pos_deta
 Removes common Japanese stop words (similar to English stop words filter).
 
 ```typescript
-import JapaneseStopFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/JapaneseStopFilter.js';
+import JapaneseStopFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/JapaneseStopFilter';
 ```
 
 ### Usage
@@ -156,7 +156,7 @@ For most use cases, `KuromojiPartOfSpeechStopFilter` is more comprehensive and r
 Removes trailing prolonged sound marks (ー) from katakana words.
 
 ```typescript
-import KuromojiKatakanaStemFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiKatakanaStemFilter.js';
+import KuromojiKatakanaStemFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiKatakanaStemFilter';
 ```
 
 ### Usage
@@ -209,20 +209,20 @@ For katakana words longer than `minimumLength`, removes the trailing `ー` chara
 Combine multiple filters for comprehensive Japanese text processing:
 
 ```typescript
-import Analyzer from 'dynamosearch/analyzers/Analyzer.js';
-import KuromojiTokenizer from '@dynamosearch/plugin-analysis-kuromoji/tokenizers/KuromojiTokenizer.js';
-import KuromojiBaseFormFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiBaseFormFilter.js';
-import KuromojiPartOfSpeechStopFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiPartOfSpeechStopFilter.js';
-import JapaneseStopFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/JapaneseStopFilter.js';
-import KuromojiKatakanaStemFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiKatakanaStemFilter.js';
-import CJKWidthFilter from 'dynamosearch/filters/CJKWidthFilter.js';
-import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter.js';
+import Analyzer from 'dynamosearch/analyzers/Analyzer';
+import KuromojiTokenizer from '@dynamosearch/plugin-analysis-kuromoji/tokenizers/KuromojiTokenizer';
+import KuromojiBaseFormFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiBaseFormFilter';
+import KuromojiPartOfSpeechStopFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiPartOfSpeechStopFilter';
+import JapaneseStopFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/JapaneseStopFilter';
+import KuromojiKatakanaStemFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiKatakanaStemFilter';
+import CJKWidthFilter from 'dynamosearch/filters/CJKWidthFilter';
+import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter';
 
 class CustomJapaneseAnalyzer extends Analyzer {
-  static async getInstance() {
-    return new CustomJapaneseAnalyzer({
+  constructor() {
+    super({
       charFilters: [],
-      tokenizer: await KuromojiTokenizer.getInstance(),
+      tokenizer: new KuromojiTokenizer(),
       filters: [
         KuromojiBaseFormFilter(),              // Normalize to base form
         KuromojiPartOfSpeechStopFilter(),      // Remove particles/symbols
