@@ -5,7 +5,7 @@ Tokenizers split text into individual tokens for indexing and searching.
 ## Base Tokenizer
 
 ```typescript
-import Tokenizer from 'dynamosearch/tokenizers/Tokenizer.js';
+import Tokenizer from 'dynamosearch/tokenizers/Tokenizer';
 ```
 
 ### Abstract Methods
@@ -21,7 +21,7 @@ abstract class Tokenizer {
 Word-based tokenization that splits on hyphens, spaces, commas, and periods.
 
 ```typescript
-import StandardTokenizer from 'dynamosearch/tokenizers/StandardTokenizer.js';
+import StandardTokenizer from 'dynamosearch/tokenizers/StandardTokenizer';
 ```
 
 ### Constructor
@@ -64,7 +64,7 @@ const tokens = await tokenizer.tokenize('Hello, World! How are you?');
 Locale-aware word segmentation using JavaScript `Intl.Segmenter` API.
 
 ```typescript
-import IntlSegmenterTokenizer from 'dynamosearch/tokenizers/IntlSegmenterTokenizer.js';
+import IntlSegmenterTokenizer from 'dynamosearch/tokenizers/IntlSegmenterTokenizer';
 ```
 
 ### Constructor
@@ -103,7 +103,7 @@ const tokens = await jaTokenizer.tokenize('今日は良い天気です');
 Returns the entire input as a single token.
 
 ```typescript
-import KeywordTokenizer from 'dynamosearch/tokenizers/KeywordTokenizer.js';
+import KeywordTokenizer from 'dynamosearch/tokenizers/KeywordTokenizer';
 ```
 
 ### Constructor
@@ -135,7 +135,7 @@ const tokens = await tokenizer.tokenize('product-abc-123-xyz');
 Splits on non-letter characters using Unicode letter property.
 
 ```typescript
-import LetterTokenizer from 'dynamosearch/tokenizers/LetterTokenizer.js';
+import LetterTokenizer from 'dynamosearch/tokenizers/LetterTokenizer';
 ```
 
 ### Constructor
@@ -171,7 +171,7 @@ const tokens = await tokenizer.tokenize('Hello123World456');
 Splits on non-letter characters and lowercases each token.
 
 ```typescript
-import LowerCaseTokenizer from 'dynamosearch/tokenizers/LowerCaseTokenizer.js';
+import LowerCaseTokenizer from 'dynamosearch/tokenizers/LowerCaseTokenizer';
 ```
 
 ### Constructor
@@ -207,7 +207,7 @@ const tokens = await tokenizer.tokenize('Hello123WORLD456');
 Splits text on whitespace characters.
 
 ```typescript
-import WhitespaceTokenizer from 'dynamosearch/tokenizers/WhitespaceTokenizer.js';
+import WhitespaceTokenizer from 'dynamosearch/tokenizers/WhitespaceTokenizer';
 ```
 
 ### Constructor
@@ -244,7 +244,7 @@ const tokens = await tokenizer.tokenize('hello-world foo_bar');
 Generates character n-grams for partial matching.
 
 ```typescript
-import NGramTokenizer from 'dynamosearch/tokenizers/NGramTokenizer.js';
+import NGramTokenizer from 'dynamosearch/tokenizers/NGramTokenizer';
 ```
 
 ### Constructor
@@ -287,7 +287,7 @@ const tokens = await tokenizer.tokenize('hello');
 Splits paths into hierarchical components.
 
 ```typescript
-import PathHierarchyTokenizer from 'dynamosearch/tokenizers/PathHierarchyTokenizer.js';
+import PathHierarchyTokenizer from 'dynamosearch/tokenizers/PathHierarchyTokenizer';
 ```
 
 ### Constructor
@@ -338,7 +338,7 @@ const tokens = await tokenizer.tokenize('com.example.app.MainActivity');
 Flexible regex-based tokenization with split or capture modes.
 
 ```typescript
-import PatternTokenizer from 'dynamosearch/tokenizers/PatternTokenizer.js';
+import PatternTokenizer from 'dynamosearch/tokenizers/PatternTokenizer';
 ```
 
 ### Constructor
@@ -381,7 +381,7 @@ const tokens2 = await capturer.tokenize('abc123def456');
 Captures text matching a pattern as tokens.
 
 ```typescript
-import SimplePatternTokenizer from 'dynamosearch/tokenizers/SimplePatternTokenizer.js';
+import SimplePatternTokenizer from 'dynamosearch/tokenizers/SimplePatternTokenizer';
 ```
 
 ### Constructor
@@ -412,7 +412,7 @@ const tokens = await tokenizer.tokenize('Order 123 and 456');
 Splits input at pattern matches.
 
 ```typescript
-import SimplePatternSplitTokenizer from 'dynamosearch/tokenizers/SimplePatternSplitTokenizer.js';
+import SimplePatternSplitTokenizer from 'dynamosearch/tokenizers/SimplePatternSplitTokenizer';
 ```
 
 ### Constructor
@@ -443,7 +443,7 @@ const tokens = await tokenizer.tokenize('apple,banana;cherry');
 Preserves URLs and email addresses as complete tokens.
 
 ```typescript
-import URLEmailTokenizer from 'dynamosearch/tokenizers/URLEmailTokenizer.js';
+import URLEmailTokenizer from 'dynamosearch/tokenizers/URLEmailTokenizer';
 ```
 
 ### Constructor
@@ -486,7 +486,7 @@ const tokens = await tokenizer.tokenize('Visit https://example.com or email admi
 ### Basic Custom Tokenizer
 
 ```typescript
-import Tokenizer from 'dynamosearch/tokenizers/Tokenizer.js';
+import Tokenizer from 'dynamosearch/tokenizers/Tokenizer';
 
 class EmailTokenizer extends Tokenizer {
   async tokenize(str: string) {
