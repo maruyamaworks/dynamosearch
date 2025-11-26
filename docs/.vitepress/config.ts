@@ -6,7 +6,17 @@ export default withMermaid({
   description: 'Elasticsearch-inspired search, built for DynamoDB',
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/dynamosearch/favicon.svg' }],
+    ['meta', { property: 'og:description', content: 'Elasticsearch-inspired search, built for DynamoDB' }],
+    ['meta', { property: 'og:image', content: 'https://maruyamaworks.github.io/dynamosearch/og.png' }],
+    ['meta', { property: 'og:site_name', content: 'DynamoSearch' }],
   ],
+  transformHead(context) {
+    return [
+      ['meta', { property: 'og:title', content: context.pageData.title || 'DynamoSearch' }],
+      ['meta', { property: 'og:type', content: context.pageData.filePath === 'index.md' ? 'website' : 'article' }],
+      ['meta', { property: 'og:url', content: `https://maruyamaworks.github.io/dynamosearch/${context.pageData.filePath.replace(/\.md$/, '.html')}` }],
+    ];
+  },
   vite: {
     optimizeDeps: {
       include: ['mermaid'],
