@@ -2,7 +2,7 @@ import { test, expect } from 'vitest';
 import StopFilter from './StopFilter.js';
 
 test('StopFilter', () => {
-  const filter = StopFilter();
+  const filter = new StopFilter();
   const input = [
     { text: 'a' },
     { text: 'quick' },
@@ -13,7 +13,7 @@ test('StopFilter', () => {
     { text: 'lazy' },
     { text: 'dog' },
   ];
-  expect(filter(input)).toEqual([
+  expect(filter.apply(input)).toEqual([
     { text: 'quick' },
     { text: 'fox' },
     { text: 'jumps' },

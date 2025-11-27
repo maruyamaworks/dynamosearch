@@ -15,8 +15,8 @@ class StandardAnalyzer extends Analyzer {
     super({
       tokenizer: new StandardTokenizer({ maxTokenLength }),
       filters: [
-        LowerCaseFilter(),
-        StopFilter({ stopWords }),
+        new LowerCaseFilter(),
+        new StopFilter({ stopWords }),
       ],
     });
   }

@@ -12,7 +12,7 @@ class StopAnalyzer extends Analyzer {
     super({
       tokenizer: new LowerCaseTokenizer(),
       filters: [
-        StopFilter({ stopWords }),
+        new StopFilter({ stopWords }),
       ],
     });
   }

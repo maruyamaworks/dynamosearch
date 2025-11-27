@@ -5,7 +5,9 @@ Token filters for Japanese text analysis provided by the kuromoji plugin.
 ## Type Definition
 
 ```typescript
-type TokenFilter = (tokens: { text: string; metadata?: IpadicFeatures }[]) => { text: string; metadata?: IpadicFeatures }[];
+abstract class TokenFilter {
+  abstract apply(tokens: { text: string; metadata?: IpadicFeatures }[]): { text: string; metadata?: IpadicFeatures }[];
+}
 ```
 
 Kuromoji token filters work with tokens that may include metadata from morphological analysis (part of speech, base form, etc.).
@@ -21,8 +23,8 @@ import KuromojiBaseFormFilter from '@dynamosearch/plugin-analysis-kuromoji/filte
 ### Usage
 
 ```typescript
-const filter = KuromojiBaseFormFilter();
-const tokens = filter([
+const filter = new KuromojiBaseFormFilter();
+const tokens = filter.apply([
   { text: '走った', metadata: { basic_form: '走る', /* ... */ } },
   { text: '食べる', metadata: { basic_form: '*', /* ... */ } },
   { text: '美しい', metadata: { basic_form: '美しい', /* ... */ } }
@@ -58,8 +60,8 @@ import KuromojiPartOfSpeechStopFilter from '@dynamosearch/plugin-analysis-kuromo
 
 ```typescript
 // Use default stop tags
-const filter = KuromojiPartOfSpeechStopFilter();
-const tokens = filter([
+const filter = new KuromojiPartOfSpeechStopFilter();
+const tokens = filter.apply([
   { text: '東京', metadata: { pos: '名詞', pos_detail_1: '固有名詞', /* ... */ } },
   { text: 'の', metadata: { pos: '助詞', pos_detail_1: '連体化', /* ... */ } },
   { text: '空', metadata: { pos: '名詞', pos_detail_1: '一般', /* ... */ } }
@@ -71,7 +73,7 @@ const tokens = filter([
 // 'の' (particle) is removed
 
 // Custom stop tags
-const customFilter = KuromojiPartOfSpeechStopFilter({
+const customFilter = new KuromojiPartOfSpeechStopFilter({
   stopTags: new Set(['助詞', '助動詞'])
 });
 ```
@@ -111,8 +113,8 @@ import JapaneseStopFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/J
 
 ```typescript
 // Use default stop words
-const filter = JapaneseStopFilter();
-const tokens = filter([
+const filter = new JapaneseStopFilter();
+const tokens = filter.apply([
   { text: 'これ' },
   { text: '素晴らしい' },
   { text: 'です' }
@@ -121,7 +123,7 @@ const tokens = filter([
 // 'これ' and 'です' are removed
 
 // Custom stop words
-const customFilter = JapaneseStopFilter({
+const customFilter = new JapaneseStopFilter({
   stopWords: new Set(['の', 'に', 'は', 'を'])
 });
 ```
@@ -163,8 +165,8 @@ import KuromojiKatakanaStemFilter from '@dynamosearch/plugin-analysis-kuromoji/f
 
 ```typescript
 // Default: minimum length 4
-const filter = KuromojiKatakanaStemFilter();
-const tokens = filter([
+const filter = new KuromojiKatakanaStemFilter();
+const tokens = filter.apply([
   { text: 'コンピューター' },
   { text: 'サーバー' },
   { text: 'カー' },  // Short word
@@ -178,7 +180,7 @@ const tokens = filter([
 // ]
 
 // Custom minimum length
-const shortFilter = KuromojiKatakanaStemFilter({ minimumLength: 2 });
+const shortFilter = new KuromojiKatakanaStemFilter({ minimumLength: 2 });
 ```
 
 ### Options
@@ -203,112 +205,3 @@ For katakana words longer than `minimumLength`, removes the trailing `ー` chara
 | サーバー | サーバ |
 | プリンター | プリンタ |
 | ユーザー | ユーザ |
-
-## Filter Chains
-
-Combine multiple filters for comprehensive Japanese text processing:
-
-```typescript
-import Analyzer from 'dynamosearch/analyzers/Analyzer';
-import KuromojiTokenizer from '@dynamosearch/plugin-analysis-kuromoji/tokenizers/KuromojiTokenizer';
-import KuromojiBaseFormFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiBaseFormFilter';
-import KuromojiPartOfSpeechStopFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiPartOfSpeechStopFilter';
-import JapaneseStopFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/JapaneseStopFilter';
-import KuromojiKatakanaStemFilter from '@dynamosearch/plugin-analysis-kuromoji/filters/KuromojiKatakanaStemFilter';
-import CJKWidthFilter from 'dynamosearch/filters/CJKWidthFilter';
-import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter';
-
-class CustomJapaneseAnalyzer extends Analyzer {
-  constructor() {
-    super({
-      charFilters: [],
-      tokenizer: new KuromojiTokenizer(),
-      filters: [
-        KuromojiBaseFormFilter(),              // Normalize to base form
-        KuromojiPartOfSpeechStopFilter(),      // Remove particles/symbols
-        CJKWidthFilter(),                       // Normalize character width
-        JapaneseStopFilter(),                   // Remove stop words
-        KuromojiKatakanaStemFilter(),          // Normalize katakana
-        LowerCaseFilter()                       // Lowercase (for alphanumeric)
-      ]
-    });
-  }
-}
-```
-
-### Recommended Filter Order
-
-1. **KuromojiBaseFormFilter** - First, normalize word forms
-2. **KuromojiPartOfSpeechStopFilter** - Remove grammatical noise
-3. **CJKWidthFilter** - Normalize character widths
-4. **JapaneseStopFilter** - Remove common stop words (optional)
-5. **KuromojiKatakanaStemFilter** - Normalize katakana
-6. **LowerCaseFilter** - Lowercase remaining tokens
-
-This is the default configuration used by `KuromojiAnalyzer`.
-
-## Custom Filters
-
-You can create custom filters that work with kuromoji metadata:
-
-### Reading-based Filter
-
-Filter by pronunciation (reading):
-
-```typescript
-const katakanaOnlyFilter = () => (tokens: { text: string; metadata?: IpadicFeatures }[]) => {
-  return tokens.filter(token => {
-    if (!token.metadata?.reading) return true;
-    // Only keep tokens with katakana readings (foreign words)
-    return /^[\u30A0-\u30FF]+$/.test(token.metadata.reading);
-  });
-};
-```
-
-### Noun-only Filter
-
-Keep only nouns:
-
-```typescript
-const nounOnlyFilter = () => (tokens: { text: string; metadata?: IpadicFeatures }[]) => {
-  return tokens.filter(token => {
-    if (!token.metadata?.pos) return true;
-    return token.metadata.pos === '名詞';
-  });
-};
-```
-
-### Compound Noun Merger
-
-Merge consecutive nouns:
-
-```typescript
-const compoundNounFilter = () => (tokens: { text: string; metadata?: IpadicFeatures }[]) => {
-  const result: typeof tokens = [];
-  let compound = '';
-
-  for (const token of tokens) {
-    if (token.metadata?.pos === '名詞') {
-      compound += token.text;
-    } else {
-      if (compound) {
-        result.push({ text: compound });
-        compound = '';
-      }
-      result.push(token);
-    }
-  }
-
-  if (compound) {
-    result.push({ text: compound });
-  }
-
-  return result;
-};
-```
-
-## See Also
-
-- [Tokenizers](./tokenizers.md) - Japanese tokenization
-- [Analyzers](./analyzers.md) - Complete analysis pipeline
-- [Core Filters](../../filters.md) - Language-agnostic filters

@@ -1,3 +1,4 @@
+import TokenFilter from './TokenFilter.js';
 import * as PredefinedStopWords from './stopwords/index.js';
 
 export interface StopFilterOptions {
@@ -5,24 +6,29 @@ export interface StopFilterOptions {
   stopWords?: keyof typeof PredefinedStopWords | string[];
 }
 
-const StopFilter = ({ stopWords = '_english_' }: StopFilterOptions = {}) => {
-  let stopWordSet: Set<string>;
-  if (typeof stopWords === 'string') {
-    stopWordSet = new Set(PredefinedStopWords[stopWords]);
-  } else {
-    stopWordSet = new Set();
+class StopFilter extends TokenFilter {
+  private stopWordSet: Set<string>;
+
+  constructor({ stopWords = '_english_' }: StopFilterOptions = {}) {
+    super();
+    if (typeof stopWords === 'string') {
+      this.stopWordSet = new Set(PredefinedStopWords[stopWords]);
+      return;
+    }
+    this.stopWordSet = new Set();
     for (let i = 0; i < stopWords.length; i++) {
       if (Object.keys(PredefinedStopWords).includes(stopWords[i])) {
         const key = stopWords[i] as keyof typeof PredefinedStopWords;
-        PredefinedStopWords[key].forEach(word => stopWordSet.add(word));
+        PredefinedStopWords[key].forEach(word => this.stopWordSet.add(word));
       } else {
-        stopWordSet.add(stopWords[i]);
+        this.stopWordSet.add(stopWords[i]);
       }
     }
   }
-  return (tokens: { text: string }[]) => {
-    return tokens.filter(token => !stopWordSet.has(token.text));
-  };
-};
+
+  override apply(tokens: { text: string }[]) {
+    return tokens.filter(token => !this.stopWordSet.has(token.text));
+  }
+}
 
 export default StopFilter;

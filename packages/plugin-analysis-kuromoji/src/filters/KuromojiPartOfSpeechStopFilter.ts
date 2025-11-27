@@ -1,3 +1,4 @@
+import TokenFilter from 'dynamosearch/filters/TokenFilter';
 import type { IpadicFeatures } from 'kuromoji';
 
 export interface KuromojiPartOfSpeechStopFilterOptions {
@@ -38,14 +39,23 @@ const DEFAULT_STOP_TAGS = new Set([
   '非言語音',
 ]);
 
-const KuromojiPartOfSpeechStopFilter = ({ stopTags = DEFAULT_STOP_TAGS }: KuromojiPartOfSpeechStopFilterOptions = {}) => (tokens: { text: string; metadata?: IpadicFeatures }[]) => {
-  return tokens.filter(({ metadata }) => {
-    if (!metadata) {
-      return true;
-    }
-    const pos = [metadata.pos, metadata.pos_detail_1, metadata.pos_detail_2, metadata.pos_detail_3].filter(item => !!item && item !== '*').join('-');
-    return !stopTags.has(pos);
-  });
-};
+class KuromojiPartOfSpeechStopFilter extends TokenFilter {
+  private stopTags: Set<string>;
+
+  constructor({ stopTags = DEFAULT_STOP_TAGS }: KuromojiPartOfSpeechStopFilterOptions = {}) {
+    super();
+    this.stopTags = stopTags;
+  }
+
+  override apply(tokens: { text: string; metadata?: IpadicFeatures }[]) {
+    return tokens.filter(({ metadata }) => {
+      if (!metadata) {
+        return true;
+      }
+      const pos = [metadata.pos, metadata.pos_detail_1, metadata.pos_detail_2, metadata.pos_detail_3].filter(item => !!item && item !== '*').join('-');
+      return !this.stopTags.has(pos);
+    });
+  }
+}
 
 export default KuromojiPartOfSpeechStopFilter;

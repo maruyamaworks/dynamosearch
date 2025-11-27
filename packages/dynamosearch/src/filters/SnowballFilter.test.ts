@@ -2,14 +2,14 @@ import { test, expect } from 'vitest';
 import SnowballFilter from './SnowballFilter.js';
 
 test('SnowballFilter', () => {
-  const filter = SnowballFilter();
+  const filter = new SnowballFilter();
   const input = [
     { text: 'the' },
     { text: 'foxes' },
     { text: 'jumping' },
     { text: 'quickly' },
   ];
-  expect(filter(input)).toEqual([
+  expect(filter.apply(input)).toEqual([
     { text: 'the' },
     { text: 'fox' },
     { text: 'jump' },

@@ -1,7 +1,11 @@
-const kanaSet = new Set(['ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'ゃ', 'ゅ', 'ょ', 'っ', 'ゎ']);
+import TokenFilter from 'dynamosearch/filters/TokenFilter';
 
-const KuromojiKatakanaUppercaseFilter = () => (tokens: { text: string }[]) => {
-  return tokens.map((item) => ({ ...item, text: item.text.split('').map(char => kanaSet.has(char) ? String.fromCharCode(char.charCodeAt(0) + 1) : char).join('') }));
-};
+class KuromojiKatakanaUppercaseFilter extends TokenFilter {
+  static readonly kanaSet = new Set(['ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'ゃ', 'ゅ', 'ょ', 'っ', 'ゎ']);
+
+  override apply(tokens: { text: string }[]) {
+    return tokens.map((item) => ({ ...item, text: item.text.split('').map(char => KuromojiKatakanaUppercaseFilter.kanaSet.has(char) ? String.fromCharCode(char.charCodeAt(0) + 1) : char).join('') }));
+  }
+}
 
 export default KuromojiKatakanaUppercaseFilter;

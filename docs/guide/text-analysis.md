@@ -46,7 +46,9 @@ class Tokenizer {
 Token filters modify or remove tokens. Multiple filters can be chained together.
 
 ```typescript
-type TokenFilter = (tokens: { text: string }[]) => { text: string }[];
+class TokenFilter {
+  apply(tokens: { text: string }[]): { text: string }[];
+}
 ```
 
 ### Character Filters
@@ -54,7 +56,9 @@ type TokenFilter = (tokens: { text: string }[]) => { text: string }[];
 Character filters preprocess the text before tokenization. They transform the raw input string.
 
 ```typescript
-type CharacterFilter = (str: string) => string;
+class CharacterFilter {
+  apply(str: string): string;
+}
 ```
 
 ## Built-in Components
@@ -95,7 +99,7 @@ class MyAnalyzer extends Analyzer {
     super({
       charFilters: [],
       tokenizer: new StandardTokenizer(),
-      filters: [LowerCaseFilter()],
+      filters: [new LowerCaseFilter()],
     });
   }
 }
@@ -128,11 +132,19 @@ const tokens = await tokenizer.tokenize('foo, bar, baz');
 Create a custom token filter as a function that transforms an array of tokens:
 
 ```typescript
-import type { TokenFilter } from 'dynamosearch/analyzers/Analyzer';
+import TokenFilter from 'dynamosearch/filters/TokenFilter';
 
-const stopWordsFilter = (stopWords: string[]): TokenFilter => {
-  const stopWordsSet = new Set(stopWords);
-  return (tokens) => tokens.filter(token => !stopWordsSet.has(token.text));
+class StopWordsFilter extends TokenFilter {
+  private stopWordsSet: Set<string>;
+
+  constructor(stopWords: string[]) {
+    super();
+    this.stopWordsSet = new Set(stopWords);
+  }
+
+  apply(tokens: { text: string }[]) {
+    return tokens.filter(token => !stopWordsSet.has(token.text));
+  }
 };
 
 class EnglishAnalyzer extends Analyzer {
@@ -141,8 +153,8 @@ class EnglishAnalyzer extends Analyzer {
       charFilters: [],
       tokenizer: new StandardTokenizer(),
       filters: [
-        LowerCaseFilter(),
-        stopWordsFilter(['the', 'a', 'an', 'and', 'or', 'but']),
+        new LowerCaseFilter(),
+        new StopWordsFilter(['the', 'a', 'an', 'and', 'or', 'but']),
       ],
     });
   }
@@ -158,18 +170,20 @@ const tokens = await analyzer.analyze('The quick brown fox');
 Create a custom character filter as a function that transforms a string:
 
 ```typescript
-import type { CharacterFilter } from 'dynamosearch/analyzers/Analyzer';
+import CharacterFilter from 'dynamosearch/char_filters/CharacterFilter';
 
-const htmlStripFilter: CharacterFilter = (str: string): string => {
-  return str.replace(/<[^>]*>/g, '');
-};
+class HtmlStripFilter extends CharacterFilter {
+  apply(str: string) {
+    return str.replace(/<[^>]*>/g, '');
+  }
+}
 
 class HtmlAnalyzer extends Analyzer {
   constructor() {
     super({
-      charFilters: [htmlStripFilter],
+      charFilters: [new HtmlStripFilter],
       tokenizer: new StandardTokenizer(),
-      filters: [LowerCaseFilter()],
+      filters: [new LowerCaseFilter()],
     });
   }
 }

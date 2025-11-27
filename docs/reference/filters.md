@@ -5,7 +5,9 @@ Token filters transform or remove tokens after tokenization.
 ## Type Definition
 
 ```typescript
-type TokenFilter = (tokens: { text: string }[]) => { text: string }[];
+abstract class TokenFilter {
+  abstract apply(tokens: { text: string }[]): { text: string }[];
+}
 ```
 
 Token filters are functions that receive an array of tokens and return a transformed array.
@@ -21,8 +23,8 @@ import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter';
 ### Usage
 
 ```typescript
-const filter = LowerCaseFilter();
-const tokens = filter([
+const filter = new LowerCaseFilter();
+const tokens = filter.apply([
   { text: 'Hello' },
   { text: 'WORLD' },
   { text: 'JavaScript' },
@@ -51,8 +53,8 @@ import UpperCaseFilter from 'dynamosearch/filters/UpperCaseFilter';
 ### Usage
 
 ```typescript
-const filter = UpperCaseFilter();
-const tokens = filter([
+const filter = new UpperCaseFilter();
+const tokens = filter.apply([
   { text: 'hello' },
   { text: 'world' },
   { text: 'JavaScript' },
@@ -81,8 +83,8 @@ import CJKWidthFilter from 'dynamosearch/filters/CJKWidthFilter';
 ### Usage
 
 ```typescript
-const filter = CJKWidthFilter();
-const tokens = filter([
+const filter = new CJKWidthFilter();
+const tokens = filter.apply([
   { text: 'ＡＢＣ' }, // Full-width
   { text: 'ａｂｃ' }, // Full-width
   { text: '１２３' }, // Full-width
@@ -116,7 +118,7 @@ import StopFilter from 'dynamosearch/filters/StopFilter';
 ### Constructor
 
 ```typescript
-StopFilter(options?: { stopWords?: '_english_' | '_none_' | string[] })
+new StopFilter(options?: { stopWords?: '_english_' | '_none_' | string[] })
 ```
 
 **Parameters:**
@@ -126,8 +128,8 @@ StopFilter(options?: { stopWords?: '_english_' | '_none_' | string[] })
 
 ```typescript
 // Built-in English stop words
-const filter = StopFilter({ stopWords: '_english_' });
-const tokens = filter([
+const filter = new StopFilter({ stopWords: '_english_' });
+const tokens = filter.apply([
   { text: 'the' },
   { text: 'quick' },
   { text: 'brown' },
@@ -136,8 +138,8 @@ const tokens = filter([
 // [{ text: 'quick' }, { text: 'brown' }, { text: 'fox' }]
 
 // Custom stop words
-const customFilter = StopFilter({ stopWords: ['quick', 'brown'] });
-const tokens2 = customFilter([
+const customFilter = new StopFilter({ stopWords: ['quick', 'brown'] });
+const tokens2 = customFilter.apply([
   { text: 'the' },
   { text: 'quick' },
   { text: 'brown' },
@@ -146,7 +148,7 @@ const tokens2 = customFilter([
 // [{ text: 'the' }, { text: 'fox' }]
 
 // No stop words
-const noFilter = StopFilter({ stopWords: '_none_' });
+const noFilter = new StopFilter({ stopWords: '_none_' });
 ```
 
 ### Available Stop Word Lists
@@ -173,7 +175,7 @@ import LengthFilter from 'dynamosearch/filters/LengthFilter';
 ### Constructor
 
 ```typescript
-LengthFilter(options?: { min?: number; max?: number })
+new LengthFilter(options?: { min?: number; max?: number })
 ```
 
 **Parameters:**
@@ -183,8 +185,8 @@ LengthFilter(options?: { min?: number; max?: number })
 ### Usage
 
 ```typescript
-const filter = LengthFilter({ min: 3, max: 20 });
-const tokens = filter([
+const filter = new LengthFilter({ min: 3, max: 20 });
+const tokens = filter.apply([
   { text: 'hi' }, // Too short
   { text: 'hello' }, // OK
   { text: 'a' }, // Too short
@@ -210,7 +212,7 @@ import TruncateFilter from 'dynamosearch/filters/TruncateFilter';
 ### Constructor
 
 ```typescript
-TruncateFilter(options?: { length?: number })
+new TruncateFilter(options?: { length?: number })
 ```
 
 **Parameters:**
@@ -219,8 +221,8 @@ TruncateFilter(options?: { length?: number })
 ### Usage
 
 ```typescript
-const filter = TruncateFilter({ length: 5 });
-const tokens = filter([
+const filter = new TruncateFilter({ length: 5 });
+const tokens = filter.apply([
   { text: 'hello' }, // 5 chars - unchanged
   { text: 'world' }, // 5 chars - unchanged
   { text: 'truncate' }, // 8 chars - truncated
@@ -249,7 +251,7 @@ import LimitTokenCountFilter from 'dynamosearch/filters/LimitTokenCountFilter';
 ### Constructor
 
 ```typescript
-LimitTokenCountFilter(options?: { maxTokenCount?: number })
+new LimitTokenCountFilter(options?: { maxTokenCount?: number })
 ```
 
 **Parameters:**
@@ -258,8 +260,8 @@ LimitTokenCountFilter(options?: { maxTokenCount?: number })
 ### Usage
 
 ```typescript
-const filter = LimitTokenCountFilter({ maxTokenCount: 3 });
-const tokens = filter([
+const filter = new LimitTokenCountFilter({ maxTokenCount: 3 });
+const tokens = filter.apply([
   { text: 'first' },
   { text: 'second' },
   { text: 'third' },
@@ -290,8 +292,8 @@ import ReverseStringFilter from 'dynamosearch/filters/ReverseStringFilter';
 ### Usage
 
 ```typescript
-const filter = ReverseStringFilter();
-const tokens = filter([
+const filter = new ReverseStringFilter();
+const tokens = filter.apply([
   { text: 'hello' },
   { text: 'world' },
 ]);
@@ -318,8 +320,8 @@ import PorterStemFilter from 'dynamosearch/filters/PorterStemFilter';
 ### Usage
 
 ```typescript
-const filter = PorterStemFilter();
-const tokens = filter([
+const filter = new PorterStemFilter();
+const tokens = filter.apply([
   { text: 'running' },
   { text: 'runs' },
   { text: 'ran' },
@@ -351,7 +353,7 @@ import SnowballFilter from 'dynamosearch/filters/SnowballFilter';
 ### Constructor
 
 ```typescript
-SnowballFilter(options?: { language?: string })
+new SnowballFilter(options?: { language?: string })
 ```
 
 **Parameters:**
@@ -368,8 +370,8 @@ SnowballFilter(options?: { language?: string })
 
 ```typescript
 // English
-const enFilter = SnowballFilter({ language: 'English' });
-const tokens1 = enFilter([
+const enFilter = new SnowballFilter({ language: 'English' });
+const tokens1 = enFilter.apply([
   { text: 'running' },
   { text: 'runs' },
   { text: 'runner' },
@@ -377,16 +379,16 @@ const tokens1 = enFilter([
 // [{ text: 'run' }, { text: 'run' }, { text: 'runner' }]
 
 // French
-const frFilter = SnowballFilter({ language: 'French' });
-const tokens2 = frFilter([
+const frFilter = new SnowballFilter({ language: 'French' });
+const tokens2 = frFilter.apply([
   { text: 'chevaux' },
   { text: 'cheval' },
 ]);
 // [{ text: 'cheval' }, { text: 'cheval' }]
 
 // Spanish
-const esFilter = SnowballFilter({ language: 'Spanish' });
-const tokens3 = esFilter([
+const esFilter = new SnowballFilter({ language: 'Spanish' });
+const tokens3 = esFilter.apply([
   { text: 'corriendo' },
   { text: 'correr' },
 ]);
@@ -411,8 +413,8 @@ import TrimFilter from 'dynamosearch/filters/TrimFilter';
 ### Usage
 
 ```typescript
-const filter = TrimFilter();
-const tokens = filter([
+const filter = new TrimFilter();
+const tokens = filter.apply([
   { text: '  hello  ' },
   { text: 'world\t' },
   { text: '\n test ' },
@@ -441,8 +443,8 @@ import UniqueFilter from 'dynamosearch/filters/UniqueFilter';
 ### Usage
 
 ```typescript
-const filter = UniqueFilter();
-const tokens = filter([
+const filter = new UniqueFilter();
+const tokens = filter.apply([
   { text: 'hello' },
   { text: 'world' },
   { text: 'hello' }, // Duplicate
@@ -468,8 +470,8 @@ import ASCIIFoldingFilter from 'dynamosearch/filters/ASCIIFoldingFilter';
 ### Usage
 
 ```typescript
-const filter = ASCIIFoldingFilter();
-const tokens = filter([
+const filter = new ASCIIFoldingFilter();
+const tokens = filter.apply([
   { text: 'café' },
   { text: 'résumé' },
   { text: 'naïve' },
@@ -489,106 +491,3 @@ const tokens = filter([
 - Language-agnostic search
 - Handling user input with accents
 - Improving search recall
-
-## Custom Filters
-
-### Synonym Filter
-
-Replace words with synonyms:
-
-```typescript
-const synonymFilter = (synonyms: Record<string, string>): TokenFilter => {
-  return (tokens) =>
-    tokens.map((token) => ({
-      text: synonyms[token.text.toLowerCase()] || token.text,
-    }));
-};
-
-// Usage
-const productSynonyms = {
-  tv: 'television',
-  pc: 'computer',
-  phone: 'smartphone',
-};
-
-const filter = synonymFilter(productSynonyms);
-const tokens = filter([{ text: 'tv' }, { text: 'pc' }]);
-// [{ text: 'television' }, { text: 'computer' }]
-```
-
-### Simple Stem Filter
-
-Basic English stemming:
-
-```typescript
-const simpleStemFilter = (): TokenFilter => {
-  const rules: [RegExp, string][] = [
-    [/ies$/, 'y'], // berries → berry
-    [/es$/, ''], // boxes → box
-    [/s$/, ''], // cats → cat
-    [/ing$/, ''], // running → runn
-    [/ed$/, ''], // walked → walk
-  ];
-
-  return (tokens) =>
-    tokens.map((token) => {
-      let text = token.text;
-      for (const [pattern, replacement] of rules) {
-        if (pattern.test(text)) {
-          text = text.replace(pattern, replacement);
-          break;
-        }
-      }
-      return { text };
-    });
-};
-```
-
-### Word Delimiter Filter
-
-Split tokens on delimiters:
-
-```typescript
-const wordDelimiterFilter = (): TokenFilter => {
-  return (tokens) => {
-    const result: { text: string }[] = [];
-    for (const token of tokens) {
-      const parts = token.text.split(/[-_]/);
-      result.push(...parts.map((text) => ({ text })));
-    }
-    return result;
-  };
-};
-
-// Usage
-const filter = wordDelimiterFilter();
-const tokens = filter([{ text: 'hello-world_foo' }]);
-// [{ text: 'hello' }, { text: 'world' }, { text: 'foo' }]
-```
-
-## Filter Chains
-
-Combine multiple filters:
-
-```typescript
-import Analyzer from 'dynamosearch/analyzers/Analyzer';
-import StandardTokenizer from 'dynamosearch/tokenizers/StandardTokenizer';
-import LowerCaseFilter from 'dynamosearch/filters/LowerCaseFilter';
-import StopFilter from 'dynamosearch/filters/StopFilter';
-import LengthFilter from 'dynamosearch/filters/LengthFilter';
-
-class CustomAnalyzer extends Analyzer {
-  constructor() {
-    super({
-      charFilters: [],
-      tokenizer: new StandardTokenizer(),
-      filters: [
-        LowerCaseFilter(),
-        StopFilter({ stopWords: '_english_' }),
-        LengthFilter({ min: 3, max: 20 }),
-        PorterStemFilter(),
-      ],
-    });
-  }
-}
-```

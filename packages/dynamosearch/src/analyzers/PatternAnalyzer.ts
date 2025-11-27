@@ -18,9 +18,9 @@ class PatternAnalyzer extends Analyzer {
       tokenizer: new PatternTokenizer({ pattern }),
       filters: [
         ...(lowercase ? [
-          LowerCaseFilter(),
+          new LowerCaseFilter(),
         ] : []),
-        StopFilter({ stopWords }),
+        new StopFilter({ stopWords }),
       ],
     });
   }

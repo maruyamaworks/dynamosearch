@@ -12,16 +12,16 @@ class KuromojiAnalyzer extends Analyzer {
   constructor() {
     super({
       charFilters: [
-        ICUNormalizer(),
+        new ICUNormalizer(),
       ],
       tokenizer: new KuromojiTokenizer(),
       filters: [
-        KuromojiBaseFormFilter(),
-        KuromojiPartOfSpeechStopFilter(),
-        CJKWidthFilter(),
-        JapaneseStopFilter(),
-        KuromojiKatakanaStemFilter(),
-        LowerCaseFilter(),
+        new KuromojiBaseFormFilter(),
+        new KuromojiPartOfSpeechStopFilter(),
+        new CJKWidthFilter(),
+        new JapaneseStopFilter(),
+        new KuromojiKatakanaStemFilter(),
+        new LowerCaseFilter(),
       ],
     });
   }
