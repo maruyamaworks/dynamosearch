@@ -1,4 +1,4 @@
-import TokenFilter from './TokenFilter.js';
+import TokenFilter, { type Token } from './TokenFilter.js';
 
 export interface TruncateFilterOptions {
   /** Character limit for each token. Tokens exceeding this limit are truncated. */
@@ -13,8 +13,8 @@ class TruncateFilter extends TokenFilter {
     this.length = length;
   }
 
-  override apply(tokens: { text: string }[]) {
-    return tokens.map(token => ({ ...token, text: token.text.slice(0, this.length) }));
+  override apply(tokens: Token[]) {
+    return tokens.map(token => ({ ...token, token: token.token.slice(0, this.length) }));
   }
 }
 

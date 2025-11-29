@@ -19,7 +19,12 @@ class IntlSegmenterTokenizer extends Tokenizer {
 
   override async tokenize(str: string) {
     const iterator = this.segmenter.segment(str);
-    return [...iterator].filter(item => item.isWordLike).map(segment => ({ text: segment.segment }));
+    return [...iterator].filter(item => item.isWordLike).map((segment, position) => ({
+      token: segment.segment,
+      startOffset: segment.index,
+      endOffset: segment.index + segment.segment.length,
+      position,
+    }));
   }
 }
 

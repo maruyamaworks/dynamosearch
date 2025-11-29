@@ -1,4 +1,4 @@
-import TokenFilter from 'dynamosearch/filters/TokenFilter';
+import TokenFilter, { type Token } from 'dynamosearch/filters/TokenFilter';
 import type { IpadicFeatures } from 'kuromoji';
 
 export interface KuromojiReadingFormFilterOptions {
@@ -14,7 +14,7 @@ class KuromojiReadingFormFilter extends TokenFilter {
     this.useRomaji = useRomaji;
   }
 
-  override apply(tokens: { text: string; metadata?: IpadicFeatures }[]) {
+  override apply(tokens: (Token & { metadata?: IpadicFeatures })[]) {
     if (this.useRomaji) {
       throw new Error('Romaji reading form is not supported yet.');
     }
@@ -22,7 +22,7 @@ class KuromojiReadingFormFilter extends TokenFilter {
       if (!item.metadata?.reading || item.metadata.reading === '*') {
         return item;
       }
-      return { ...item, text: item.metadata.reading };
+      return { ...item, token: item.metadata.reading };
     });
   }
 }

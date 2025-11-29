@@ -16,13 +16,17 @@ class NGramTokenizer extends Tokenizer {
   }
 
   override async tokenize(str: string) {
-    const tokens: string[] = [];
+    const tokens: { token: string; startOffset: number; endOffset: number }[] = [];
     for (let i = 0; i < str.length; i++) {
       for (let j = this.minGram; j <= this.maxGram && i + j <= str.length; j++) {
-        tokens.push(str.slice(i, i + j));
+        tokens.push({
+          token: str.slice(i, i + j),
+          startOffset: i,
+          endOffset: i + j,
+        });
       }
     }
-    return tokens.map(token => ({ text: token }));
+    return tokens.map((token, position) => ({ ...token, position }));
   }
 }
 

@@ -1,4 +1,4 @@
-import TokenFilter from './TokenFilter.js';
+import TokenFilter, { type Token } from './TokenFilter.js';
 
 export interface LimitTokenCountFilterOptions {
   /** Maximum number of tokens to keep. Once this limit is reached, any remaining tokens are excluded from the output. */
@@ -13,7 +13,7 @@ class LimitTokenCountFilter extends TokenFilter {
     this.maxTokenCount = maxTokenCount;
   }
 
-  override apply(tokens: { text: string }[]) {
+  override apply(tokens: Token[]) {
     return tokens.slice(0, this.maxTokenCount);
   }
 }

@@ -14,15 +14,19 @@ class WhitespaceTokenizer extends Tokenizer {
   }
 
   override async tokenize(str: string) {
-    const tokens: string[] = [];
-    const segments = str.split(/\s+/).filter(Boolean);
+    const tokens: { token: string; startOffset: number; endOffset: number }[] = [];
+    const segments = [...str.matchAll(/\S+/g)];
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
-      for (let j = 0; j < segment.length; j += this.maxTokenLength) {
-        tokens.push(segment.slice(j, j + this.maxTokenLength));
+      for (let j = 0; j < segment[0].length; j += this.maxTokenLength) {
+        tokens.push({
+          token: segment[0].slice(j, j + this.maxTokenLength),
+          startOffset: segment.index + j,
+          endOffset: segment.index + Math.min(segment[0].length, j + this.maxTokenLength),
+        });
       }
     }
-    return tokens.map(token => ({ text: token }));
+    return tokens.map((token, position) => ({ ...token, position }));
   }
 }
 

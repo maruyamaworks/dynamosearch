@@ -1,8 +1,8 @@
-import TokenFilter from './TokenFilter.js';
+import TokenFilter, { type Token } from './TokenFilter.js';
 
 class LowerCaseFilter extends TokenFilter {
-  override apply(tokens: { text: string }[]) {
-    return tokens.map(token => ({ ...token, text: token.text.toLowerCase() }));
+  override apply(tokens: Token[]) {
+    return tokens.map(token => ({ ...token, token: token.token.toLowerCase() }));
   }
 }
 

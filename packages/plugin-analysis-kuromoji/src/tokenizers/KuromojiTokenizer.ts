@@ -42,8 +42,11 @@ class KuromojiTokenizer extends Tokenizer {
       this.tokenizerPromise = this.createTokenizer(this.dicPath);
     }
     const tokens = (await this.tokenizerPromise).tokenize(str);
-    return tokens.filter(token => !(this.discardPunctuation && isPunctuation(token.surface_form))).map(token => ({
-      text: token.surface_form,
+    return tokens.filter(token => !(this.discardPunctuation && isPunctuation(token.surface_form))).map((token, position) => ({
+      token: token.surface_form,
+      startOffset: token.word_position - 1,
+      endOffset: token.word_position + token.surface_form.length - 1,
+      position,
       metadata: token,
     }));
   }

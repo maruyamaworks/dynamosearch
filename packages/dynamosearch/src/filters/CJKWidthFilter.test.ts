@@ -4,9 +4,9 @@ import CJKWidthFilter from './CJKWidthFilter.js';
 test('CJKWidthFilter', () => {
   const filter = new CJKWidthFilter();
   const input = [
-    { text: 'ｼｰｻｲﾄﾞﾗｲﾅｰ' },
+    { token: 'ｼｰｻｲﾄﾞﾗｲﾅｰ', startOffset: 0, endOffset: 10, position: 0 },
   ];
   expect(filter.apply(input)).toEqual([
-    { text: 'シーサイドライナー' },
+    { token: 'シーサイドライナー', startOffset: 0, endOffset: 10, position: 0 },
   ]);
 });

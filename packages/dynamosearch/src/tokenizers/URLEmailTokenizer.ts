@@ -20,31 +20,51 @@ class URLEmailTokenizer extends Tokenizer {
     this.maxTokenLength = maxTokenLength;
   }
 
-  private splitPattern(str: string, pattern: RegExp) {
-    const matches = [...str.matchAll(pattern)];
+  private splitPattern(token: { token: string; startOffset: number; endOffset: number }, pattern: RegExp) {
+    const matches = [...token.token.matchAll(pattern)];
     if (matches.length === 0) {
-      return [{ text: str, matched: false }];
+      return [{ ...token, keyword: false }];
     }
-    const result = [{ text: str.slice(0, matches[0].index), matched: false }];
+    const result = [{
+      token: token.token.slice(0, matches[0].index),
+      startOffset: token.startOffset,
+      endOffset: token.startOffset + matches[0].index,
+      keyword: false,
+    }];
     for (let i = 0; i < matches.length; i++) {
-      result.push({ text: str.slice(matches[i].index, matches[i].index + matches[i][0].length), matched: matches[i][0].length <= this.maxTokenLength });
-      result.push({ text: str.slice(matches[i].index + matches[i][0].length, i + 1 < matches.length ? matches[i + 1].index : str.length), matched: false });
+      result.push({
+        token: token.token.slice(matches[i].index, matches[i].index + matches[i][0].length),
+        startOffset: token.startOffset + matches[i].index,
+        endOffset: token.startOffset + matches[i].index + matches[i][0].length,
+        keyword: matches[i][0].length <= this.maxTokenLength,
+      });
+      result.push({
+        token: token.token.slice(matches[i].index + matches[i][0].length, i + 1 < matches.length ? matches[i + 1].index : token.token.length),
+        startOffset: token.startOffset + matches[i].index + matches[i][0].length,
+        endOffset: token.startOffset + (i + 1 < matches.length ? matches[i + 1].index : token.token.length),
+        keyword: false,
+      });
     }
-    return result.filter(({ text }) => text);
+    return result.filter(({ token }) => !!token);
   }
 
   override async tokenize(str: string) {
-    const tokens: string[] = [];
-    const segments = this.splitPattern(str, URLEmailTokenizer.URL_PATTERN)
-      .flatMap(segment => segment.matched ? [segment] : this.splitPattern(segment.text, URLEmailTokenizer.EMAIL_PATTERN))
-      .flatMap(segment => segment.matched ? [segment] : segment.text.split(/[-\s,.]+/).map(text => ({ text })));
+    const tokens: { token: string; startOffset: number; endOffset: number; keyword: boolean }[] = [];
+    const segments = this.splitPattern({ token: str, startOffset: 0, endOffset: str.length }, URLEmailTokenizer.URL_PATTERN)
+      .flatMap(segment => segment.keyword ? [segment] : this.splitPattern(segment, URLEmailTokenizer.EMAIL_PATTERN))
+      .flatMap(segment => segment.keyword ? [segment] : this.splitPattern(segment, /[-\s,.]+/g).filter(token => !token.keyword));
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
-      for (let j = 0; j < segment.text.length; j += this.maxTokenLength) {
-        tokens.push(segment.text.slice(j, j + this.maxTokenLength));
+      for (let j = 0; j < segment.token.length; j += this.maxTokenLength) {
+        tokens.push({
+          token: segment.token.slice(j, j + this.maxTokenLength),
+          startOffset: segment.startOffset + j,
+          endOffset: segment.startOffset + Math.min(segment.token.length, j + this.maxTokenLength),
+          keyword: segment.keyword,
+        });
       }
     }
-    return tokens.map(token => ({ text: token }));
+    return tokens.map((token, position) => ({ ...token, position }));
   }
 }
 

@@ -1,4 +1,4 @@
-import TokenFilter from './TokenFilter.js';
+import TokenFilter, { type Token } from './TokenFilter.js';
 import * as Snowball from './snowball/index.js';
 
 export interface SnowballFilterOptions {
@@ -13,8 +13,8 @@ class SnowballFilter extends TokenFilter {
     this.stemmer = new Snowball[`${language}Stemmer`]();
   }
 
-  override apply(tokens: { text: string }[]) {
-    return tokens.map(token => ({ ...token, text: this.stemmer.stemWord(token.text) }));
+  override apply(tokens: Token[]) {
+    return tokens.map(token => ({ ...token, token: this.stemmer.stemWord(token.token) }));
   }
 }
 

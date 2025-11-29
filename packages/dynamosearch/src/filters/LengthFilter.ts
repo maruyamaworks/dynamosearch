@@ -1,4 +1,4 @@
-import TokenFilter from './TokenFilter.js';
+import TokenFilter, { type Token } from './TokenFilter.js';
 
 export interface LengthFilterOptions {
   /** Minimum character length of a token. Shorter tokens are excluded from the output. */
@@ -17,8 +17,8 @@ class LengthFilter extends TokenFilter {
     this.max = max;
   }
 
-  override apply(tokens: { text: string }[]) {
-    return tokens.filter(token => token.text.length >= this.min && token.text.length <= this.max);
+  override apply(tokens: Token[]) {
+    return tokens.filter(token => token.token.length >= this.min && token.token.length <= this.max);
   }
 }
 

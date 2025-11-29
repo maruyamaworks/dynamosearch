@@ -1,4 +1,4 @@
-import TokenFilter from 'dynamosearch/filters/TokenFilter';
+import TokenFilter, { type Token } from 'dynamosearch/filters/TokenFilter';
 import type { IpadicFeatures } from 'kuromoji';
 
 export interface KuromojiPartOfSpeechStopFilterOptions {
@@ -47,7 +47,7 @@ class KuromojiPartOfSpeechStopFilter extends TokenFilter {
     this.stopTags = stopTags;
   }
 
-  override apply(tokens: { text: string; metadata?: IpadicFeatures }[]) {
+  override apply(tokens: (Token & { metadata?: IpadicFeatures })[]) {
     return tokens.filter(({ metadata }) => {
       if (!metadata) {
         return true;

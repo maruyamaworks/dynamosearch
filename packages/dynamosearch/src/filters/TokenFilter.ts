@@ -1,5 +1,8 @@
+import { Token } from '../tokenizers/Tokenizer.js';
+
 abstract class TokenFilter {
-  abstract apply(tokens: { text: string }[]): { text: string }[];
+  abstract apply(tokens: Token[]): Token[];
 }
 
 export default TokenFilter;
+export { Token };

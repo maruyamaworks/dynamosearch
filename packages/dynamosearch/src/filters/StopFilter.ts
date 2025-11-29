@@ -1,4 +1,4 @@
-import TokenFilter from './TokenFilter.js';
+import TokenFilter, { type Token } from './TokenFilter.js';
 import * as PredefinedStopWords from './stopwords/index.js';
 
 export interface StopFilterOptions {
@@ -26,8 +26,8 @@ class StopFilter extends TokenFilter {
     }
   }
 
-  override apply(tokens: { text: string }[]) {
-    return tokens.filter(token => !this.stopWordSet.has(token.text));
+  override apply(tokens: Token[]) {
+    return tokens.filter(token => !this.stopWordSet.has(token.token));
   }
 }
 

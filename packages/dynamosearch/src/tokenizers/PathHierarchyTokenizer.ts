@@ -14,9 +14,10 @@ class PathHierarchyTokenizer extends Tokenizer {
 
   override async tokenize(str: string) {
     const segments = str.split(this.delimiter).slice(1);
-    return new Array(segments.length).fill(0).map((_, i) => ({
-      text: this.delimiter + segments.slice(0, i + 1).join(this.delimiter),
-    }));
+    return new Array(segments.length).fill(0).map((_, i) => {
+      const token = this.delimiter + segments.slice(0, i + 1).join(this.delimiter);
+      return { token, startOffset: 0, endOffset: token.length, position: i };
+    });
   }
 }
 

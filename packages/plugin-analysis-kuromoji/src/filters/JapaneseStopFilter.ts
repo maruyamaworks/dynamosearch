@@ -1,4 +1,4 @@
-import TokenFilter from 'dynamosearch/filters/TokenFilter';
+import TokenFilter, { type Token } from 'dynamosearch/filters/TokenFilter';
 import * as PredefinedStopWords from './stopwords/index.js';
 
 export interface JapaneseStopFilterOptions {
@@ -26,8 +26,8 @@ class JapaneseStopFilter extends TokenFilter {
     }
   }
 
-  override apply(tokens: { text: string }[]) {
-    return tokens.filter(token => !this.stopWordSet.has(token.text));
+  override apply(tokens: Token[]) {
+    return tokens.filter(token => !this.stopWordSet.has(token.token));
   }
 }
 

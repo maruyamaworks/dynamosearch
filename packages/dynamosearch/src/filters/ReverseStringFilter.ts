@@ -1,8 +1,8 @@
-import TokenFilter from './TokenFilter.js';
+import TokenFilter, { type Token } from './TokenFilter.js';
 
 class ReverseStringFilter extends TokenFilter {
-  override apply(tokens: { text: string }[]) {
-    return tokens.map(token => ({ ...token, text: token.text.split('').reverse().join('') }));
+  override apply(tokens: Token[]) {
+    return tokens.map(token => ({ ...token, token: token.token.split('').reverse().join('') }));
   }
 }
 

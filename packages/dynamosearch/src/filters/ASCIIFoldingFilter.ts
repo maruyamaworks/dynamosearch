@@ -1,8 +1,8 @@
-import TokenFilter from './TokenFilter.js';
+import TokenFilter, { type Token } from './TokenFilter.js';
 
 class ASCIIFoldingFilter extends TokenFilter {
-  override apply(tokens: { text: string }[]) {
-    return tokens.map(token => ({ ...token, text: token.text.normalize('NFD').replace(/[\u0300-\u036f]/g, '') }));
+  override apply(tokens: Token[]) {
+    return tokens.map(token => ({ ...token, token: token.token.normalize('NFD').replace(/[\u0300-\u036f]/g, '') }));
   }
 }
 

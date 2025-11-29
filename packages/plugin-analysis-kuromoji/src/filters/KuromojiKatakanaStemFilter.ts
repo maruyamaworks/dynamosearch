@@ -1,4 +1,4 @@
-import TokenFilter from 'dynamosearch/filters/TokenFilter';
+import TokenFilter, { type Token } from 'dynamosearch/filters/TokenFilter';
 
 export interface KuromojiKatakanaStemFilterOptions {
   /** Katakana words shorter than the minimumLength are not stemmed. */
@@ -13,8 +13,8 @@ class KuromojiKatakanaStemFilter extends TokenFilter {
     this.minimumLength = minimumLength;
   }
 
-  override apply(tokens: { text: string }[]) {
-    return tokens.map((item) => ({ ...item, text: item.text.length < this.minimumLength ? item.text : item.text.replace(/ー$/, '') }));
+  override apply(tokens: Token[]) {
+    return tokens.map((item) => ({ ...item, token: item.token.length < this.minimumLength ? item.token : item.token.replace(/ー$/, '') }));
   }
 }
 

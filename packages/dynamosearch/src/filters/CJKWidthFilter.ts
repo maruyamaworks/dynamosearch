@@ -1,4 +1,4 @@
-import TokenFilter from './TokenFilter.js';
+import TokenFilter, { type Token } from './TokenFilter.js';
 
 class CJKWidthFilter extends TokenFilter {
   private halfKanaToFullWidth(text: string) {
@@ -31,8 +31,8 @@ class CJKWidthFilter extends TokenFilter {
     return text.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
   }
 
-  override apply(tokens: { text: string }[]) {
-    return tokens.map(item => ({ ...item, text: this.halfKanaToFullWidth(this.fullAlphaNumericToHalfWidth(item.text)) }));
+  override apply(tokens: Token[]) {
+    return tokens.map(item => ({ ...item, token: this.halfKanaToFullWidth(this.fullAlphaNumericToHalfWidth(item.token)) }));
   }
 }
 
