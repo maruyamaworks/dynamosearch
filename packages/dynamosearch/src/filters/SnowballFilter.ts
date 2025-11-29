@@ -14,7 +14,7 @@ class SnowballFilter extends TokenFilter {
   }
 
   override apply(tokens: Token[]) {
-    return tokens.map(token => ({ ...token, token: this.stemmer.stemWord(token.token) }));
+    return tokens.map(token => ({ ...token, token: token.keyword ? token.token : this.stemmer.stemWord(token.token) }));
   }
 }
 
