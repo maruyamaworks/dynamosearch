@@ -11,13 +11,13 @@ export interface KeywordMarkerFilterOptions {
 
 class KeywordMarkerFilter extends TokenFilter {
   private ignoreCase: boolean;
-  private keywords: string[];
+  private keywordSet: Set<string>;
   private keywordsPattern?: RegExp;
 
   constructor({ ignoreCase = false, keywords = [], keywordsPattern }: KeywordMarkerFilterOptions = {}) {
     super();
     this.ignoreCase = ignoreCase;
-    this.keywords = ignoreCase ? keywords.map(word => word.toLowerCase()) : keywords;
+    this.keywordSet = new Set(ignoreCase ? keywords.map(word => word.toLowerCase()) : keywords);
     this.keywordsPattern = keywordsPattern;
   }
 
@@ -25,7 +25,7 @@ class KeywordMarkerFilter extends TokenFilter {
     if (this.keywordsPattern) {
       return tokens.map(token => ({ ...token, keyword: this.keywordsPattern!.test(token.token) }));
     }
-    return tokens.map(token => ({ ...token, keyword: this.keywords.includes(this.ignoreCase ? token.token.toLowerCase() : token.token) }));
+    return tokens.map(token => ({ ...token, keyword: this.keywordSet.has(this.ignoreCase ? token.token.toLowerCase() : token.token) }));
   }
 }
 
