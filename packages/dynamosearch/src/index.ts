@@ -40,6 +40,8 @@ export interface Options {
 
 export interface SearchOptions {
   attributes?: string[];
+  operator?: 'OR' | 'AND';
+  minimumShouldMatch?: number;
   maxItems?: number;
   minScore?: number;
   bm25?: BM25Params;
@@ -399,7 +401,7 @@ class DynamoSearch {
     await this.updateIndexMetadata({ count, resultMap });
   }
 
-  async search(query: string, { attributes, maxItems = 100, minScore = 0, bm25: { k1 = 1.2, b = 0.75 } = {} }: SearchOptions = {}) {
+  async search(query: string, { attributes, operator = 'OR', minimumShouldMatch, maxItems = 100, minScore = 0, bm25: { k1 = 1.2, b = 0.75 } = {} }: SearchOptions = {}) {
     const _attributes: (Attribute & { boost?: number })[] = attributes?.map((attributeName) => {
       const attribute = this.attributes.find(attr => attr.name === attributeName.split('^')[0]);
       const boost = parseFloat(attributeName.split('^')[1] || '1');
@@ -411,27 +413,28 @@ class DynamoSearch {
 
     let consumedCapacity = 0;
     const { docCount, tokenCount: tokenCountMap } = await this.getIndexMetadata();
-    const candidates = new Map<string, number>();
-    for (let i = 0; i < _attributes.length; i++) {
-      const tokens = await _attributes[i].analyzer.analyze(query);
+    const items = new Map<string, number>();
+    await Promise.all(_attributes.map(async (attribute) => {
+      const tokens = await attribute.analyzer.analyze(query);
       const words = [...new Set(tokens.map(token => token.token))];
-      for (let j = 0; j < words.length; j++) {
-        const command = new QueryCommand({
-          TableName: this.indexTableName,
-          KeyConditionExpression: '#pk = :pk',
-          ProjectionExpression: '#sk, #keys',
-          ExpressionAttributeNames: {
-            '#pk': DynamoSearch.ATTR_PK,
-            '#sk': DynamoSearch.ATTR_SK,
-            '#keys': DynamoSearch.ATTR_KEYS,
-          },
-          ExpressionAttributeValues: {
-            ':pk': { S: `${_attributes[i].shortName || _attributes[i].name};${words[j]}` },
-          },
-          ReturnConsumedCapacity: 'TOTAL',
-          ScanIndexForward: false,
-        });
-        const { Items, ConsumedCapacity } = await this.client.send(command);
+      const results = await Promise.all(words.map(word => this.client.send(new QueryCommand({
+        TableName: this.indexTableName,
+        KeyConditionExpression: '#pk = :pk',
+        ProjectionExpression: '#sk, #keys',
+        ExpressionAttributeNames: {
+          '#pk': DynamoSearch.ATTR_PK,
+          '#sk': DynamoSearch.ATTR_SK,
+          '#keys': DynamoSearch.ATTR_KEYS,
+        },
+        ExpressionAttributeValues: {
+          ':pk': { S: `${attribute.shortName || attribute.name};${word}` },
+        },
+        ReturnConsumedCapacity: 'TOTAL',
+        ScanIndexForward: false,
+      }))));
+      const candidates = new Map<string, [count: number, score: number]>();
+      for (let i = 0; i < results.length; i++) {
+        const { Items, ConsumedCapacity } = results[i];
         consumedCapacity += ConsumedCapacity?.CapacityUnits ?? 0;
         if (Items) {
           const idf = Math.log(1 + (docCount - Items.length + 0.5) / (Items.length + 0.5));
@@ -439,17 +442,22 @@ class DynamoSearch {
             const occurrence = Buffer.from(item[DynamoSearch.ATTR_SK].B!).readUInt16BE(0);
             const tokenCount = Buffer.from(item[DynamoSearch.ATTR_SK].B!).readUInt32BE(2);
             const encodedKeys = item[DynamoSearch.ATTR_KEYS].S!;
-            const averageTokenCount = tokenCountMap.get(_attributes[i].name)! / docCount;
+            const averageTokenCount = tokenCountMap.get(attribute.name)! / docCount;
             const tf = occurrence / (occurrence + k1 * (1 - b + b * (tokenCount / averageTokenCount)));
-            const score = (_attributes[i].boost ?? 1) * tf * idf * (k1 + 1);
-            candidates.set(encodedKeys, (candidates.get(encodedKeys) ?? 0) + score);
+            const score = (attribute.boost ?? 1) * tf * idf * (k1 + 1);
+            candidates.set(encodedKeys, [(candidates.get(encodedKeys)?.[0] ?? 0) + 1, (candidates.get(encodedKeys)?.[1] ?? 0) + score]);
           });
         }
       }
-    }
+      for (const [encodedKeys, [count, score]] of candidates.entries()) {
+        if ((operator === 'AND' && count === words.length) || (operator === 'OR' && (!minimumShouldMatch || count >= minimumShouldMatch))) {
+          items.set(encodedKeys, (items.get(encodedKeys) ?? 0) + score);
+        }
+      }
+    }));
 
     return {
-      items: [...candidates.entries()]
+      items: [...items.entries()]
         .filter(([, score]) => score >= minScore)
         .sort(([, score_A], [, score_B]) => score_B - score_A)
         .slice(0, maxItems)
