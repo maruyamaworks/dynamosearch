@@ -2,7 +2,7 @@ import TokenFilter, { type Token } from './TokenFilter.js';
 import { PorterStemmer } from './snowball/index.js';
 
 class PorterStemFilter extends TokenFilter {
-  private stemmer: any;
+  private stemmer: { stemWord: (word: string) => string };
 
   constructor() {
     super();

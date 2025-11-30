@@ -6,7 +6,7 @@ export interface SnowballFilterOptions {
 }
 
 class SnowballFilter extends TokenFilter {
-  private stemmer: any;
+  private stemmer: { stemWord: (word: string) => string };
 
   constructor({ language = 'English' }: SnowballFilterOptions = {}) {
     super();
