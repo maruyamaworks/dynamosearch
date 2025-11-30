@@ -75,19 +75,19 @@ DynamoSearch provides several built-in analyzers, tokenizers, and filters. For d
 
 ### Analyzers
 
-See [Built-in Analyzers](/reference/analyzers) for complete specifications.
+See [Built-in Analyzers](/reference/analyzers/) for complete specifications.
 
 ### Tokenizers
 
-See [Built-in Tokenizers](/reference/tokenizers) for complete specifications.
+See [Built-in Tokenizers](/reference/tokenizers/) for complete specifications.
 
 ### Token Filters
 
-See [Built-in Token Filters](/reference/filters) for complete specifications.
+See [Built-in Token Filters](/reference/filters/) for complete specifications.
 
 ### Character Filters
 
-See [Built-in Character Filters](/reference/char-filters) for complete specifications.
+See [Built-in Character Filters](/reference/char-filters/) for complete specifications.
 
 ## Custom Components
 
