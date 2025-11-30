@@ -162,6 +162,10 @@ Searches the index using BM25 ranking.
 - **query** (`string`) - Search query text
 - **options** (optional)
   - **attributes** (`string[]`) - Attributes to search with optional boost (e.g., `'title^2'`)
+  - **operator** (`'OR' | 'AND'`, optional) - Query operator (default: `'OR'`)
+    - `'OR'`: Documents match if they contain any of the query terms
+    - `'AND'`: Documents match only if they contain all query terms
+  - **minimumShouldMatch** (`number`, optional) - Minimum number of query terms that must match (only applies when `operator` is `'OR'`)
   - **maxItems** (`number`) - Maximum results to return (default: `100`)
   - **minScore** (`number`) - Minimum relevance score (default: `0`)
   - **bm25** (`BM25Params`) - BM25 parameters
@@ -224,6 +228,25 @@ const results = await dynamosearch.search('machine learning', {
     k1: 1.5,  // Higher k1: more weight to term frequency
     b: 0.9,   // Higher b: stronger length normalization
   },
+});
+```
+
+#### With AND Operator
+
+```typescript
+// Only return documents containing ALL query terms
+const results = await dynamosearch.search('machine learning algorithms', {
+  operator: 'AND',
+});
+```
+
+#### With Minimum Should Match
+
+```typescript
+// Return documents containing at least 2 of the 3 query terms
+const results = await dynamosearch.search('machine learning algorithms', {
+  operator: 'OR',
+  minimumShouldMatch: 2,
 });
 ```
 

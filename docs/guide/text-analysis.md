@@ -27,7 +27,15 @@ interface AnalyzerOptions {
 
 class Analyzer {
   constructor(options: AnalyzerOptions);
-  analyze(str: string): Promise<{ text: string }[]>;
+  analyze(str: string): Promise<Token[]>;
+}
+
+interface Token {
+  token: string;
+  startOffset: number;
+  endOffset: number;
+  position: number;
+  keyword?: boolean;
 }
 ```
 
@@ -37,7 +45,7 @@ The tokenizer splits the text into individual tokens. Only one tokenizer is used
 
 ```typescript
 class Tokenizer {
-  tokenize(str: string): Promise<{ text: string }[]>;
+  tokenize(str: string): Promise<Token[]>;
 }
 ```
 
@@ -47,7 +55,7 @@ Token filters modify or remove tokens. Multiple filters can be chained together.
 
 ```typescript
 class TokenFilter {
-  apply(tokens: { text: string }[]): { text: string }[];
+  apply(tokens: Token[]): Token[];
 }
 ```
 
@@ -106,7 +114,10 @@ class MyAnalyzer extends Analyzer {
 
 const analyzer = new MyAnalyzer();
 const tokens = await analyzer.analyze('Hello World');
-// [{ text: 'hello' }, { text: 'world' }]
+// [
+//   { token: 'hello', startOffset: 0, endOffset: 5, position: 0 },
+//   { token: 'world', startOffset: 6, endOffset: 11, position: 1 }
+// ]
 ```
 
 ### Custom Tokenizer
@@ -115,16 +126,34 @@ Implement a custom tokenizer by extending the `Tokenizer` class:
 
 ```typescript
 import Tokenizer from 'dynamosearch/tokenizers/Tokenizer';
+import type { Token } from 'dynamosearch/tokenizers/Tokenizer';
 
 class CommaTokenizer extends Tokenizer {
-  async tokenize(str: string): Promise<{ text: string }[]> {
-    return str.split(',').map(text => ({ text: text.trim() }));
+  async tokenize(str: string): Promise<Token[]> {
+    const parts = str.split(',');
+    let position = 0;
+    return parts.map((text, i) => {
+      const trimmed = text.trim();
+      const startOffset = str.indexOf(trimmed, position);
+      const endOffset = startOffset + trimmed.length;
+      position = endOffset;
+      return {
+        token: trimmed,
+        startOffset,
+        endOffset,
+        position: i,
+      };
+    });
   }
 }
 
 const tokenizer = new CommaTokenizer();
 const tokens = await tokenizer.tokenize('foo, bar, baz');
-// [{ text: 'foo' }, { text: 'bar' }, { text: 'baz' }]
+// [
+//   { token: 'foo', startOffset: 0, endOffset: 3, position: 0 },
+//   { token: 'bar', startOffset: 5, endOffset: 8, position: 1 },
+//   { token: 'baz', startOffset: 10, endOffset: 13, position: 2 }
+// ]
 ```
 
 ### Custom Token Filter
@@ -133,6 +162,7 @@ Create a custom token filter as a function that transforms an array of tokens:
 
 ```typescript
 import TokenFilter from 'dynamosearch/filters/TokenFilter';
+import type { Token } from 'dynamosearch/tokenizers/Tokenizer';
 
 class StopWordsFilter extends TokenFilter {
   private stopWordsSet: Set<string>;
@@ -142,10 +172,10 @@ class StopWordsFilter extends TokenFilter {
     this.stopWordsSet = new Set(stopWords);
   }
 
-  apply(tokens: { text: string }[]) {
-    return tokens.filter(token => !stopWordsSet.has(token.text));
+  apply(tokens: Token[]): Token[] {
+    return tokens.filter(token => !this.stopWordsSet.has(token.token));
   }
-};
+}
 
 class EnglishAnalyzer extends Analyzer {
   constructor() {
@@ -162,7 +192,11 @@ class EnglishAnalyzer extends Analyzer {
 
 const analyzer = new EnglishAnalyzer();
 const tokens = await analyzer.analyze('The quick brown fox');
-// [{ text: 'quick' }, { text: 'brown' }, { text: 'fox' }]
+// [
+//   { token: 'quick', startOffset: 4, endOffset: 9, position: 1 },
+//   { token: 'brown', startOffset: 10, endOffset: 15, position: 2 },
+//   { token: 'fox', startOffset: 16, endOffset: 19, position: 3 }
+// ]
 ```
 
 ### Custom Character Filter
@@ -173,7 +207,7 @@ Create a custom character filter as a function that transforms a string:
 import CharacterFilter from 'dynamosearch/char_filters/CharacterFilter';
 
 class HtmlStripFilter extends CharacterFilter {
-  apply(str: string) {
+  apply(str: string): string {
     return str.replace(/<[^>]*>/g, '');
   }
 }
@@ -181,7 +215,7 @@ class HtmlStripFilter extends CharacterFilter {
 class HtmlAnalyzer extends Analyzer {
   constructor() {
     super({
-      charFilters: [new HtmlStripFilter],
+      charFilters: [new HtmlStripFilter()],
       tokenizer: new StandardTokenizer(),
       filters: [new LowerCaseFilter()],
     });
@@ -190,7 +224,10 @@ class HtmlAnalyzer extends Analyzer {
 
 const analyzer = new HtmlAnalyzer();
 const tokens = await analyzer.analyze('<p>Hello</p> World');
-// [{ text: 'hello' }, { text: 'world' }]
+// [
+//   { token: 'hello', startOffset: 0, endOffset: 5, position: 0 },
+//   { token: 'world', startOffset: 6, endOffset: 11, position: 1 }
+// ]
 ```
 
 ## Per-Attribute Analyzers
