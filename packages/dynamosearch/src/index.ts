@@ -44,6 +44,11 @@ export interface BM25Params {
   b: number;
 }
 
+export interface IndexMetadata {
+  docCount: number;
+  tokenCount: Map<string, number>;
+}
+
 export interface Query {
   bool: BooleanQuery;
   minScore?: number;
@@ -51,18 +56,10 @@ export interface Query {
 }
 
 export interface BooleanQuery {
-  must?: {
-    match: MatchQuery;
-  }[];
-  mustNot?: {
-    match: MatchQuery;
-  }[];
-  filter?: {
-    match: MatchQuery;
-  }[];
-  should?: {
-    match: MatchQuery;
-  }[];
+  must?: ({ match: MatchQuery } | { bool: BooleanQuery })[];
+  filter?: ({ match: MatchQuery } | { bool: BooleanQuery })[];
+  should?: ({ match: MatchQuery } | { bool: BooleanQuery })[];
+  mustNot?: ({ match: MatchQuery } | { bool: BooleanQuery })[];
   minimumShouldMatch?: number;
 }
 
@@ -433,14 +430,24 @@ class DynamoSearch {
     await this.updateIndexMetadata({ count, resultMap });
   }
 
-  async booleanQuery(query: BooleanQuery, indexMetadata: { docCount: number; tokenCount: Map<string, number> }) {
+  private _query(query: { match: MatchQuery } | { bool: BooleanQuery }, indexMetadata: IndexMetadata) {
+    if ('match' in query) {
+      return this.matchQuery(query.match, indexMetadata);
+    }
+    if ('bool' in query) {
+      return this.booleanQuery(query.bool, indexMetadata);
+    }
+    throw new Error(`Unknown query type: "${Object.keys(query)[0]}"`);
+  }
+
+  private async booleanQuery(query: BooleanQuery, indexMetadata: IndexMetadata) {
     let consumedCapacity = 0;
     const items = new Map<string, number>();
 
     if (query.must) {
       const candidates = new Map<string, [count: number, score: number]>();
       for (let i = 0; i < query.must.length; i++) {
-        const result = await this.matchQuery(query.must[i].match, indexMetadata);
+        const result = await this._query(query.must[i], indexMetadata);
         for (const [encodedKeys, score] of result.items.entries()) {
           candidates.set(encodedKeys, [(candidates.get(encodedKeys)?.[0] ?? 0) + 1, (candidates.get(encodedKeys)?.[1] ?? 0) + score]);
         }
@@ -455,7 +462,7 @@ class DynamoSearch {
     if (query.filter) {
       const candidates = new Map<string, [count: number, score: number]>();
       for (let i = 0; i < query.filter.length; i++) {
-        const result = await this.matchQuery(query.filter[i].match, indexMetadata);
+        const result = await this._query(query.filter[i], indexMetadata);
         for (const [encodedKeys, score] of result.items.entries()) {
           candidates.set(encodedKeys, [(candidates.get(encodedKeys)?.[0] ?? 0) + 1, (candidates.get(encodedKeys)?.[1] ?? 0) + score]);
         }
@@ -470,7 +477,7 @@ class DynamoSearch {
     if (query.should) {
       const candidates = new Map<string, [count: number, score: number]>();
       for (let i = 0; i < query.should.length; i++) {
-        const result = await this.matchQuery(query.should[i].match, indexMetadata);
+        const result = await this._query(query.should[i], indexMetadata);
         for (const [encodedKeys, score] of result.items.entries()) {
           candidates.set(encodedKeys, [(candidates.get(encodedKeys)?.[0] ?? 0) + 1, (candidates.get(encodedKeys)?.[1] ?? 0) + score]);
         }
@@ -484,7 +491,7 @@ class DynamoSearch {
     }
     if (query.mustNot) {
       for (let i = 0; i < query.mustNot.length; i++) {
-        const result = await this.matchQuery(query.mustNot[i].match, indexMetadata);
+        const result = await this._query(query.mustNot[i], indexMetadata);
         for (const [encodedKeys] of result.items.entries()) {
           items.delete(encodedKeys);
         }
@@ -493,7 +500,7 @@ class DynamoSearch {
     return { items, consumedCapacity };
   }
 
-  async matchQuery(query: MatchQuery, indexMetadata: { docCount: number; tokenCount: Map<string, number> }) {
+  private async matchQuery(query: MatchQuery, indexMetadata: IndexMetadata) {
     let consumedCapacity = 0;
     const items = new Map<string, number>();
 
