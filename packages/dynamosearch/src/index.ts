@@ -452,20 +452,41 @@ class DynamoSearch {
         }
       }
     }
+    if (query.filter) {
+      const candidates = new Map<string, [count: number, score: number]>();
+      for (let i = 0; i < query.filter.length; i++) {
+        const result = await this.matchQuery(query.filter[i].match, indexMetadata);
+        for (const [encodedKeys, score] of result.items.entries()) {
+          candidates.set(encodedKeys, [(candidates.get(encodedKeys)?.[0] ?? 0) + 1, (candidates.get(encodedKeys)?.[1] ?? 0) + score]);
+        }
+        consumedCapacity += result.consumedCapacity;
+      }
+      for (const [encodedKeys, [count]] of candidates.entries()) {
+        if (count === query.filter.length && ((query.must || []).length === 0 || items.has(encodedKeys))) {
+          items.set(encodedKeys, items.get(encodedKeys) ?? 0);
+        }
+      }
+    }
     if (query.should) {
       const candidates = new Map<string, [count: number, score: number]>();
       for (let i = 0; i < query.should.length; i++) {
         const result = await this.matchQuery(query.should[i].match, indexMetadata);
-        for (const [key, score] of result.items.entries()) {
-          if (!query.must || query.must.length === 0 || items.has(key)) { // items にない場合は must を満たしていないということなので set しない
-            items.set(key, (items.get(key) ?? 0) + score);
-          }
+        for (const [encodedKeys, score] of result.items.entries()) {
+          candidates.set(encodedKeys, [(candidates.get(encodedKeys)?.[0] ?? 0) + 1, (candidates.get(encodedKeys)?.[1] ?? 0) + score]);
         }
         consumedCapacity += result.consumedCapacity;
       }
       for (const [encodedKeys, [count, score]] of candidates.entries()) {
-        if (!query.minimumShouldMatch || count >= query.minimumShouldMatch) {
+        if (count >= (query.minimumShouldMatch ?? 1) && (((query.must || []).length === 0 && (query.filter || []).length === 0) || items.has(encodedKeys))) {
           items.set(encodedKeys, (items.get(encodedKeys) ?? 0) + score);
+        }
+      }
+    }
+    if (query.mustNot) {
+      for (let i = 0; i < query.mustNot.length; i++) {
+        const result = await this.matchQuery(query.mustNot[i].match, indexMetadata);
+        for (const [encodedKeys] of result.items.entries()) {
+          items.delete(encodedKeys);
         }
       }
     }
