@@ -74,12 +74,14 @@ test('processRecords (INSERT)', async () => {
       s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
       k: { S: 'N101' },
       h: { B: new Uint8Array([232]) },
+      z: { L: [{ N: '0' }] },
     },
     {
       p: { S: 'Message;item!' },
       s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
       k: { S: 'N101' },
       h: { B: new Uint8Array([232]) },
+      z: { L: [{ N: '1' }] },
     },
   ]));
 });
@@ -108,6 +110,7 @@ test('search', async () => {
               s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
               k: { S: 'N101' },
               h: { B: new Uint8Array([232]) },
+              z: { L: [{ N: '0' }] },
             },
           },
         },
@@ -118,6 +121,7 @@ test('search', async () => {
               s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
               k: { S: 'N101' },
               h: { B: new Uint8Array([232]) },
+              z: { L: [{ N: '1' }] },
             },
           },
         },
@@ -203,24 +207,28 @@ test('processRecords (MODIFY)', async () => {
       s: { B: new Uint8Array([0, 1, 0, 0, 0, 4, 232, 244, 177, 186, 163, 88, 89, 159]) },
       k: { S: 'N101' },
       h: { B: new Uint8Array([232]) },
+      z: { L: [{ N: '0' }] },
     },
     {
       p: { S: 'Message;item' },
       s: { B: new Uint8Array([0, 1, 0, 0, 0, 4, 232, 244, 177, 186, 163, 88, 89, 159]) },
       k: { S: 'N101' },
       h: { B: new Uint8Array([232]) },
+      z: { L: [{ N: '1' }] },
     },
     {
       p: { S: 'Message;has' },
       s: { B: new Uint8Array([0, 1, 0, 0, 0, 4, 232, 244, 177, 186, 163, 88, 89, 159]) },
       k: { S: 'N101' },
       h: { B: new Uint8Array([232]) },
+      z: { L: [{ N: '2' }] },
     },
     {
       p: { S: 'Message;changed' },
       s: { B: new Uint8Array([0, 1, 0, 0, 0, 4, 232, 244, 177, 186, 163, 88, 89, 159]) },
       k: { S: 'N101' },
       h: { B: new Uint8Array([232]) },
+      z: { L: [{ N: '3' }] },
     },
   ]));
 });
@@ -259,12 +267,14 @@ test('reindex', async () => {
       s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
       k: { S: 'N101' },
       h: { B: new Uint8Array([232]) },
+      z: { L: [{ N: '0' }] },
     },
     {
       p: { S: 'Message;item!' },
       s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
       k: { S: 'N101' },
       h: { B: new Uint8Array([232]) },
+      z: { L: [{ N: '1' }] },
     },
   ]));
 });
@@ -285,8 +295,8 @@ test('exportTokensAsFile', async () => {
   });
 
   const file = await readFile('./test.jsonl', 'utf8');
-  expect(file).toEqual(`{"Item":{"p":{"S":"Message;new"},"s":{"B":"AAEAAAAC6PSxuqNYWZ8="},"k":{"S":"N101"},"h":{"B":"6A=="}}}
-{"Item":{"p":{"S":"Message;item!"},"s":{"B":"AAEAAAAC6PSxuqNYWZ8="},"k":{"S":"N101"},"h":{"B":"6A=="}}}
+  expect(file).toEqual(`{"Item":{"p":{"S":"Message;new"},"s":{"B":"AAEAAAAC6PSxuqNYWZ8="},"k":{"S":"N101"},"h":{"B":"6A=="},"z":{"L":[{"N":"0"}]}}}
+{"Item":{"p":{"S":"Message;item!"},"s":{"B":"AAEAAAAC6PSxuqNYWZ8="},"k":{"S":"N101"},"h":{"B":"6A=="},"z":{"L":[{"N":"1"}]}}}
 {"Item":{"p":{"S":"_"},"s":{"B":"AA=="},"dc":{"N":"2"},"tc:Message":{"N":"2"}}}
 `);
 
