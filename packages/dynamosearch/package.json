@@ -21,7 +21,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "generate:parser": "pnpm dlx peggy -o src/query_parser/parser.js --format es --dts --return-types '{\"start\":\"import(\\\"../index.js\\\").Query\"}' src/query_parser/SimpleQueryString.peg.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.929.0"

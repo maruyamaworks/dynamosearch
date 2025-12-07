@@ -14,6 +14,7 @@ import {
   type CreateTableCommandInput,
   type DynamoDBClientConfig,
 } from '@aws-sdk/client-dynamodb';
+import { parse } from './query_parser/parser.js';
 import type { DynamoDBRecord } from 'aws-lambda';
 import type Analyzer from './analyzers/Analyzer.js';
 
@@ -53,6 +54,7 @@ export type Query =
   | { match: MatchQuery }
   | { matchPhrase: MatchPhraseQuery }
   | { multiMatch: MultiMatchQuery }
+  | { simpleQueryString: SimpleQueryStringQuery }
   | { bool: BooleanQuery };
 
 export interface BooleanQuery {
@@ -94,6 +96,12 @@ export type MultiMatchQuery =
       fields?: string[];
       slop?: number;
     };
+
+export interface SimpleQueryStringQuery {
+  query: string;
+  fields?: string[];
+  defaultOperator?: 'OR' | 'AND';
+}
 
 export interface SearchOptions {
   attributes?: string[];
@@ -465,7 +473,7 @@ class DynamoSearch {
     await this.updateIndexMetadata({ docCount: count, tokenCount: resultMap });
   }
 
-  private _query(query: Query, indexMetadata: IndexMetadata) {
+  private _query(query: Query, indexMetadata: IndexMetadata): Promise<{ items: Map<string, number>; consumedCapacity: number }> {
     if ('match' in query) {
       return this.matchQuery(query.match, indexMetadata);
     }
@@ -474,6 +482,9 @@ class DynamoSearch {
     }
     if ('multiMatch' in query) {
       return this.multiMatchQuery(query.multiMatch, indexMetadata);
+    }
+    if ('simpleQueryString' in query) {
+      return this.simpleQueryStringQuery(query.simpleQueryString, indexMetadata);
     }
     if ('bool' in query) {
       return this.booleanQuery(query.bool, indexMetadata);
@@ -609,7 +620,7 @@ class DynamoSearch {
     return { items, consumedCapacity };
   }
 
-  private async multiMatchQuery({ query, type = 'best_fields', fields = ['*'], ...options }: MultiMatchQuery, indexMetadata: IndexMetadata) {
+  private multiMatchQuery({ query, type = 'best_fields', fields = ['*'], ...options }: MultiMatchQuery, indexMetadata: IndexMetadata) {
     const attributes: (Attribute & { boost: number })[] = [];
     for (let i = 0; i < this.attributes.length; i++) {
       for (let j = 0; j < fields.length; j++) {
@@ -635,6 +646,10 @@ class DynamoSearch {
       }, indexMetadata);
     }
     throw new Error(`Unknown query type: "${type}"`);
+  }
+
+  private simpleQueryStringQuery({ query, fields = ['*'], defaultOperator = 'OR' }: SimpleQueryStringQuery, indexMetadata: IndexMetadata) {
+    return this._query(parse(query, { fields, defaultOperator }), indexMetadata);
   }
 
   /**
