@@ -465,45 +465,45 @@ class DynamoSearch {
     const items = new Map<string, number>();
 
     if (query.must) {
-      const candidates = new Map<string, [count: number, score: number]>();
+      const candidates = new Map<string, { count: number, score: number }>();
       for (let i = 0; i < query.must.length; i++) {
         const result = await this._query(query.must[i], indexMetadata);
         for (const [encodedKeys, score] of result.items.entries()) {
-          candidates.set(encodedKeys, [(candidates.get(encodedKeys)?.[0] ?? 0) + 1, (candidates.get(encodedKeys)?.[1] ?? 0) + score]);
+          candidates.set(encodedKeys, { count: (candidates.get(encodedKeys)?.count ?? 0) + 1, score: (candidates.get(encodedKeys)?.score ?? 0) + score });
         }
         consumedCapacity += result.consumedCapacity;
       }
-      for (const [encodedKeys, [count, score]] of candidates.entries()) {
+      for (const [encodedKeys, { count, score }] of candidates.entries()) {
         if (count === query.must.length) {
           items.set(encodedKeys, (items.get(encodedKeys) ?? 0) + score);
         }
       }
     }
     if (query.filter) {
-      const candidates = new Map<string, [count: number, score: number]>();
+      const candidates = new Map<string, { count: number }>();
       for (let i = 0; i < query.filter.length; i++) {
         const result = await this._query(query.filter[i], indexMetadata);
-        for (const [encodedKeys, score] of result.items.entries()) {
-          candidates.set(encodedKeys, [(candidates.get(encodedKeys)?.[0] ?? 0) + 1, (candidates.get(encodedKeys)?.[1] ?? 0) + score]);
+        for (const encodedKeys of result.items.keys()) {
+          candidates.set(encodedKeys, { count: (candidates.get(encodedKeys)?.count ?? 0) + 1 });
         }
         consumedCapacity += result.consumedCapacity;
       }
-      for (const [encodedKeys, [count]] of candidates.entries()) {
+      for (const [encodedKeys, { count }] of candidates.entries()) {
         if (count === query.filter.length && ((query.must || []).length === 0 || items.has(encodedKeys))) {
           items.set(encodedKeys, items.get(encodedKeys) ?? 0);
         }
       }
     }
     if (query.should) {
-      const candidates = new Map<string, [count: number, score: number]>();
+      const candidates = new Map<string, { count: number, score: number }>();
       for (let i = 0; i < query.should.length; i++) {
         const result = await this._query(query.should[i], indexMetadata);
         for (const [encodedKeys, score] of result.items.entries()) {
-          candidates.set(encodedKeys, [(candidates.get(encodedKeys)?.[0] ?? 0) + 1, (candidates.get(encodedKeys)?.[1] ?? 0) + score]);
+          candidates.set(encodedKeys, { count: (candidates.get(encodedKeys)?.count ?? 0) + 1, score: (candidates.get(encodedKeys)?.score ?? 0) + score });
         }
         consumedCapacity += result.consumedCapacity;
       }
-      for (const [encodedKeys, [count, score]] of candidates.entries()) {
+      for (const [encodedKeys, { count, score }] of candidates.entries()) {
         if (count >= (query.minimumShouldMatch ?? 1) && (((query.must || []).length === 0 && (query.filter || []).length === 0) || items.has(encodedKeys))) {
           items.set(encodedKeys, (items.get(encodedKeys) ?? 0) + score);
         }
