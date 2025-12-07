@@ -52,6 +52,7 @@ export interface IndexMetadata {
 export type Query =
   | { match: MatchQuery }
   | { matchPhrase: MatchPhraseQuery }
+  | { multiMatch: MultiMatchQuery }
   | { bool: BooleanQuery };
 
 export interface BooleanQuery {
@@ -65,6 +66,7 @@ export interface BooleanQuery {
 export interface MatchQuery {
   [attributeName: string]: string | {
     query: string;
+    boost?: number;
     operator?: 'OR' | 'AND';
     minimumShouldMatch?: number;
   };
@@ -73,9 +75,25 @@ export interface MatchQuery {
 export interface MatchPhraseQuery {
   [attributeName: string]: string | {
     query: string;
+    boost?: number;
     slop?: number;
   };
 }
+
+export type MultiMatchQuery =
+  | {
+      query: string;
+      type?: 'best_fields' | 'most_fields';
+      fields?: string[];
+      operator?: 'OR' | 'AND';
+      minimumShouldMatch?: number;
+    }
+  | {
+      query: string;
+      type: 'phrase';
+      fields?: string[];
+      slop?: number;
+    };
 
 export interface SearchOptions {
   attributes?: string[];
@@ -454,6 +472,9 @@ class DynamoSearch {
     if ('matchPhrase' in query) {
       return this.matchQuery(query.matchPhrase, indexMetadata, { phrase: true });
     }
+    if ('multiMatch' in query) {
+      return this.multiMatchQuery(query.multiMatch, indexMetadata);
+    }
     if ('bool' in query) {
       return this.booleanQuery(query.bool, indexMetadata);
     }
@@ -526,7 +547,7 @@ class DynamoSearch {
     const items = new Map<string, number>();
 
     const attributeName = Object.keys(query)[0];
-    const attribute: Attribute & { boost?: number } = this.attributes.find(attr => attr.name === attributeName)!;
+    const attribute = this.attributes.find(attr => attr.name === attributeName)!;
     const tokens = await attribute.analyzer.analyze(typeof query[attributeName] === 'string' ? query[attributeName] : query[attributeName].query);
     const words = [...new Set(tokens.map(token => token.token))];
     const results = await Promise.all(words.map(word => this.client.send(new QueryCommand({
@@ -546,6 +567,7 @@ class DynamoSearch {
       ScanIndexForward: false,
     }))));
     const candidates = new Map<string, { token: string; positions: number[]; score: number }[]>();
+    const boost = typeof query[attributeName] !== 'string' ? (query[attributeName].boost ?? 1) : 1;
     for (let i = 0; i < results.length; i++) {
       const { Items, ConsumedCapacity } = results[i];
       consumedCapacity += ConsumedCapacity?.CapacityUnits ?? 0;
@@ -558,7 +580,7 @@ class DynamoSearch {
           const positions = item[DynamoSearch.ATTR_POSITION].L!.map(pos => parseInt(pos.N!));
           const averageTokenCount = indexMetadata.tokenCount.get(attribute.name)! / indexMetadata.docCount;
           const tf = occurrence / (occurrence + this.bm25.k1 * (1 - this.bm25.b + this.bm25.b * (tokenCount / averageTokenCount)));
-          const score = (attribute.boost ?? 1) * tf * idf * (this.bm25.k1 + 1);
+          const score = boost * tf * idf * (this.bm25.k1 + 1);
           if (candidates.has(encodedKeys)) {
             candidates.get(encodedKeys)!.push({ token: words[i], positions, score });
           } else {
@@ -585,6 +607,34 @@ class DynamoSearch {
     }
 
     return { items, consumedCapacity };
+  }
+
+  private async multiMatchQuery({ query, type = 'best_fields', fields = ['*'], ...options }: MultiMatchQuery, indexMetadata: IndexMetadata) {
+    const attributes: (Attribute & { boost: number })[] = [];
+    for (let i = 0; i < this.attributes.length; i++) {
+      for (let j = 0; j < fields.length; j++) {
+        const attributeName = fields[j].split('^')[0];
+        if (new RegExp(`^${attributeName.replaceAll('*', '.*')}$`).test(this.attributes[i].name)) {
+          attributes.push({ ...this.attributes[i], boost: parseFloat(fields[j].split('^')[1] || '1') });
+          break;
+        }
+      }
+    }
+    if (type === 'best_fields' || type === 'most_fields') {
+      return this.booleanQuery({
+        should: attributes.map(attr => ({
+          match: { [attr.name]: { query, boost: attr.boost, ...options } },
+        })),
+      }, indexMetadata);
+    }
+    if (type === 'phrase') {
+      return this.booleanQuery({
+        should: attributes.map(attr => ({
+          matchPhrase: { [attr.name]: { query, boost: attr.boost, ...options } },
+        })),
+      }, indexMetadata);
+    }
+    throw new Error(`Unknown query type: "${type}"`);
   }
 
   /**
