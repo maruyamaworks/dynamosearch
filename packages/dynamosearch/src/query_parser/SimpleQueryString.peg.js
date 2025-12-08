@@ -1,35 +1,45 @@
 {
+  /**
+   * @param {["" | "-", string]} head
+   * @param {["" | "+" | "|", ["" | "-", string]][]} tail
+   * @returns {import("../index.js").Query}
+   */
   function createBooleanQuery(head, tail) {
     if (tail.length === 0) {
       return { bool: { must: [head[1]] } };
     }
-    const query = { bool: {} };
+    const bool = {};
     const defaultClause = options.defaultOperator === 'AND' ? 'must' : 'should';
+    let clause = defaultClause;
     if (head[0] === '-') {
-      query.bool.mustNot ||= [];
-      query.bool.mustNot.push(head[1]);
+      clause = 'mustNot';
     } else if (tail[0][0] === '+') {
-      query.bool.must ||= [];
-      query.bool.must.push(head[1]);
-    } else {
-      query.bool[defaultClause] ||= [];
-      query.bool[defaultClause].push(head[1]);
+      clause = 'must';
+    } else if (tail[0][0] === '|') {
+      clause = 'should';
     }
+    bool[clause] ||= [];
+    bool[clause].push(head[1]);
     for (let i = 0; i < tail.length; i++) {
+      let clause = defaultClause;
       if (tail[i][1][0] === '-') {
-        query.bool.mustNot ||= [];
-        query.bool.mustNot.push(tail[i][1][1]);
+        clause = 'mustNot';
       } else if (tail[i][0] === '+') {
-        query.bool.must ||= [];
-        query.bool.must.push(tail[i][1][1]);
-      } else {
-        query.bool[defaultClause] ||= [];
-        query.bool[defaultClause].push(tail[i][1][1]);
+        clause = 'must';
+      } else if (tail[i][0] === '|') {
+        clause = 'should';
       }
+      bool[clause] ||= [];
+      bool[clause].push(tail[i][1][1]);
     }
-    return query;
+    return { bool };
   }
 
+  /**
+   * @param {string} text
+   * @param {number} slop
+   * @returns {import("../index.js").Query}
+   */
   function createMatchPhraseQuery(text, slop) {
     return {
       multiMatch: {
@@ -41,6 +51,10 @@
     };
   }
 
+  /**
+   * @param {string} text
+   * @returns {import("../index.js").Query}
+   */
   function createMatchQuery(text) {
     if (text[text.length - 1] === '*') {
       return {
