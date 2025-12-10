@@ -783,16 +783,18 @@ function peg$parse(input, options) {
 
 
   /**
-   * @param {["" | "-", string]} head
-   * @param {["" | "+" | "|", ["" | "-", string]][]} tail
+   * @param {["" | "-", import("../index.js").Query]} head
+   * @param {["" | "+" | "|", ["" | "-", import("../index.js").Query]][]} tail
    * @returns {import("../index.js").Query}
    */
   function createBooleanQuery(head, tail) {
     if (tail.length === 0) {
       return { bool: { must: [head[1]] } };
     }
+    /** @type {import("../index.js").BooleanQuery} */
     const bool = {};
     const defaultClause = options.defaultOperator === 'AND' ? 'must' : 'should';
+    /** @type {keyof typeof bool} */
     let clause = defaultClause;
     if (head[0] === '-') {
       clause = 'mustNot';
@@ -802,8 +804,9 @@ function peg$parse(input, options) {
       clause = 'should';
     }
     bool[clause] ||= [];
-    bool[clause].push(head[1]);
+    bool[clause]?.push(head[1]);
     for (let i = 0; i < tail.length; i++) {
+      /** @type {keyof typeof bool} */
       let clause = defaultClause;
       if (tail[i][1][0] === '-') {
         clause = 'mustNot';
@@ -813,7 +816,7 @@ function peg$parse(input, options) {
         clause = 'should';
       }
       bool[clause] ||= [];
-      bool[clause].push(tail[i][1][1]);
+      bool[clause]?.push(tail[i][1][1]);
     }
     return { bool };
   }
