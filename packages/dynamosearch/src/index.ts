@@ -55,7 +55,10 @@ export type Query =
   | { matchPhrase: MatchPhraseQuery }
   | { multiMatch: MultiMatchQuery }
   | { simpleQueryString: SimpleQueryStringQuery }
-  | { bool: BooleanQuery };
+  | { bool: BooleanQuery }
+  | { boosting: BoostingQuery }
+  | { constantScore: ConstantScoreQuery }
+  | { disMax: DisjunctionMaxQuery };
 
 export interface BooleanQuery {
   must?: Query[];
@@ -63,6 +66,22 @@ export interface BooleanQuery {
   should?: Query[];
   mustNot?: Query[];
   minimumShouldMatch?: number;
+}
+
+export interface BoostingQuery {
+  positive: Query;
+  negative: Query;
+  negativeBoost: number;
+}
+
+export interface ConstantScoreQuery {
+  filter: Query;
+  boost?: number;
+}
+
+export interface DisjunctionMaxQuery {
+  queries: Query[];
+  tieBreaker?: number;
 }
 
 export interface MatchQuery {
@@ -85,7 +104,15 @@ export interface MatchPhraseQuery {
 export type MultiMatchQuery =
   | {
       query: string;
-      type?: 'best_fields' | 'most_fields';
+      type?: 'best_fields';
+      fields?: string[];
+      operator?: 'OR' | 'AND';
+      minimumShouldMatch?: number;
+      tieBreaker?: number;
+    }
+  | {
+      query: string;
+      type: 'most_fields';
       fields?: string[];
       operator?: 'OR' | 'AND';
       minimumShouldMatch?: number;
@@ -489,6 +516,15 @@ class DynamoSearch {
     if ('bool' in query) {
       return this.booleanQuery(query.bool, indexMetadata);
     }
+    if ('boosting' in query) {
+      return this.boostingQuery(query.boosting, indexMetadata);
+    }
+    if ('constantScore' in query) {
+      return this.constantScoreQuery(query.constantScore, indexMetadata);
+    }
+    if ('disMax' in query) {
+      return this.disjunctionMaxQuery(query.disMax, indexMetadata);
+    }
     throw new Error(`Unknown query type: "${Object.keys(query)[0]}"`);
   }
 
@@ -548,6 +584,59 @@ class DynamoSearch {
           items.delete(encodedKeys);
         }
       }
+    }
+
+    return { items, consumedCapacity };
+  }
+
+  private async boostingQuery({ positive, negative, negativeBoost }: BoostingQuery, indexMetadata: IndexMetadata) {
+    const [positiveResult, negativeResult] = await Promise.all([positive, negative].map(query => this._query(query, indexMetadata)));
+    const items = new Map<string, number>();
+    const consumedCapacity = positiveResult.consumedCapacity + negativeResult.consumedCapacity;
+    for (const [encodedKeys, score] of positiveResult.items.entries()) {
+      if (negativeResult.items.has(encodedKeys)) {
+        items.set(encodedKeys, score * negativeBoost);
+      } else {
+        items.set(encodedKeys, score);
+      }
+    }
+
+    return { items, consumedCapacity };
+  }
+
+  private async constantScoreQuery({ filter, boost = 1 }: ConstantScoreQuery, indexMetadata: IndexMetadata) {
+    const { items: _items, consumedCapacity } = await this._query(filter, indexMetadata);
+    const items = new Map<string, number>();
+    for (const encodedKeys of _items.keys()) {
+      items.set(encodedKeys, boost);
+    }
+
+    return { items, consumedCapacity };
+  }
+
+  private async disjunctionMaxQuery({ queries, tieBreaker = 0 }: DisjunctionMaxQuery, indexMetadata: IndexMetadata) {
+    const results = await Promise.all(queries.map(query => this._query(query, indexMetadata)));
+    const scoreMap = new Map<string, number[]>();
+    let consumedCapacity = 0;
+    for (let i = 0; i < results.length; i++) {
+      consumedCapacity += results[i].consumedCapacity;
+      for (const [encodedKeys, score] of results[i].items.entries()) {
+        if (scoreMap.has(encodedKeys)) {
+          scoreMap.get(encodedKeys)!.push(score);
+        } else {
+          scoreMap.set(encodedKeys, [score]);
+        }
+      }
+    }
+    const items = new Map<string, number>();
+    for (const [encodedKeys, scores] of scoreMap.entries()) {
+      let score = Math.max(...scores);
+      const maxIndex = scores.findIndex(s => score === s);
+      for (let j = 0; j < scores.length; j++) {
+        if (j === maxIndex) continue;
+        score += scores[j] * tieBreaker;
+      }
+      items.set(encodedKeys, score);
     }
 
     return { items, consumedCapacity };
@@ -631,7 +720,14 @@ class DynamoSearch {
         }
       }
     }
-    if (type === 'best_fields' || type === 'most_fields') {
+    if (type === 'best_fields') {
+      return this.disjunctionMaxQuery({
+        queries: attributes.map(attr => ({
+          match: { [attr.name]: { query, boost: attr.boost, ...options } },
+        })),
+      }, indexMetadata);
+    }
+    if (type === 'most_fields') {
       return this.booleanQuery({
         should: attributes.map(attr => ({
           match: { [attr.name]: { query, boost: attr.boost, ...options } },
