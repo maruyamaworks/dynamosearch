@@ -53,6 +53,7 @@ export interface IndexMetadata {
 export type Query =
   | { match: MatchQuery }
   | { matchPhrase: MatchPhraseQuery }
+  | { combinedFields: CombinedFieldsQuery }
   | { multiMatch: MultiMatchQuery }
   | { simpleQueryString: SimpleQueryStringQuery }
   | { bool: BooleanQuery }
@@ -101,6 +102,13 @@ export interface MatchPhraseQuery {
   };
 }
 
+export interface CombinedFieldsQuery {
+  query: string;
+  fields: string[];
+  operator?: 'OR' | 'AND';
+  minimumShouldMatch?: number;
+}
+
 export type MultiMatchQuery =
   | {
       query: string;
@@ -122,6 +130,13 @@ export type MultiMatchQuery =
       type: 'phrase';
       fields?: string[];
       slop?: number;
+    }
+  | {
+      query: string;
+      type: 'cross_fields';
+      fields?: string[];
+      operator?: 'OR' | 'AND';
+      minimumShouldMatch?: number;
     };
 
 export interface SimpleQueryStringQuery {
@@ -289,6 +304,41 @@ class DynamoSearch {
       [this.partitionKeyName]: decodeKeys(str)[0],
       ...(this.sortKeyName ? { [this.sortKeyName]: decodeKeys(str)[1] } : {}),
     };
+  }
+
+  private async fetchTokens(attribute: Attribute, token: string, indexMetadata: IndexMetadata) {
+    const { Items, ConsumedCapacity } = await this.client.send(new QueryCommand({
+      TableName: this.indexTableName,
+      KeyConditionExpression: '#pk = :pk',
+      ProjectionExpression: '#sk, #keys, #pos',
+      ExpressionAttributeNames: {
+        '#pk': DynamoSearch.ATTR_PK,
+        '#sk': DynamoSearch.ATTR_SK,
+        '#keys': DynamoSearch.ATTR_KEYS,
+        '#pos': DynamoSearch.ATTR_POSITION,
+      },
+      ExpressionAttributeValues: {
+        ':pk': { S: `${attribute.shortName || attribute.name};${token}` },
+      },
+      ReturnConsumedCapacity: 'TOTAL',
+      ScanIndexForward: false,
+    }));
+    if (!Items) {
+      return { items: [], consumedCapacity: ConsumedCapacity?.CapacityUnits ?? 0 };
+    }
+    const idf = Math.log(1 + (indexMetadata.docCount - Items.length + 0.5) / (Items.length + 0.5));
+    const items = Items.map((item) => {
+      const occurrence = Buffer.from(item[DynamoSearch.ATTR_SK].B!).readUInt16BE(0);
+      const tokenCount = Buffer.from(item[DynamoSearch.ATTR_SK].B!).readUInt32BE(2);
+      const encodedKeys = item[DynamoSearch.ATTR_KEYS].S!;
+      const positions = item[DynamoSearch.ATTR_POSITION].L!.map(pos => parseInt(pos.N!));
+      const averageTokenCount = indexMetadata.tokenCount.get(attribute.name)! / indexMetadata.docCount;
+      const tf = occurrence / (occurrence + this.bm25.k1 * (1 - this.bm25.b + this.bm25.b * (tokenCount / averageTokenCount)));
+      const score = tf * idf * (this.bm25.k1 + 1);
+      return { encodedKeys, positions, score };
+    });
+
+    return { items, consumedCapacity: ConsumedCapacity?.CapacityUnits ?? 0 };
   }
 
   async insertTokens(item: Record<string, AWSLambda.AttributeValue>, resultMap = new Map<string, number>()) {
@@ -507,6 +557,9 @@ class DynamoSearch {
     if ('matchPhrase' in query) {
       return this.matchQuery(query.matchPhrase, indexMetadata, { phrase: true });
     }
+    if ('combinedFields' in query) {
+      return this.combinedFieldsQuery(query.combinedFields, indexMetadata);
+    }
     if ('multiMatch' in query) {
       return this.multiMatchQuery(query.multiMatch, indexMetadata);
     }
@@ -650,44 +703,18 @@ class DynamoSearch {
     const attribute = this.attributes.find(attr => attr.name === attributeName)!;
     const tokens = await attribute.analyzer.analyze(typeof query[attributeName] === 'string' ? query[attributeName] : query[attributeName].query);
     const words = [...new Set(tokens.map(token => token.token))];
-    const results = await Promise.all(words.map(word => this.client.send(new QueryCommand({
-      TableName: this.indexTableName,
-      KeyConditionExpression: '#pk = :pk',
-      ProjectionExpression: '#sk, #keys, #pos',
-      ExpressionAttributeNames: {
-        '#pk': DynamoSearch.ATTR_PK,
-        '#sk': DynamoSearch.ATTR_SK,
-        '#keys': DynamoSearch.ATTR_KEYS,
-        '#pos': DynamoSearch.ATTR_POSITION,
-      },
-      ExpressionAttributeValues: {
-        ':pk': { S: `${attribute.shortName || attribute.name};${word}` },
-      },
-      ReturnConsumedCapacity: 'TOTAL',
-      ScanIndexForward: false,
-    }))));
+    const results = await Promise.all(words.map(word => this.fetchTokens(attribute, word, indexMetadata)));
     const candidates = new Map<string, { token: string; positions: number[]; score: number }[]>();
     const boost = typeof query[attributeName] !== 'string' ? (query[attributeName].boost ?? 1) : 1;
     for (let i = 0; i < results.length; i++) {
-      const { Items, ConsumedCapacity } = results[i];
-      consumedCapacity += ConsumedCapacity?.CapacityUnits ?? 0;
-      if (Items) {
-        const idf = Math.log(1 + (indexMetadata.docCount - Items.length + 0.5) / (Items.length + 0.5));
-        Items.forEach((item) => {
-          const occurrence = Buffer.from(item[DynamoSearch.ATTR_SK].B!).readUInt16BE(0);
-          const tokenCount = Buffer.from(item[DynamoSearch.ATTR_SK].B!).readUInt32BE(2);
-          const encodedKeys = item[DynamoSearch.ATTR_KEYS].S!;
-          const positions = item[DynamoSearch.ATTR_POSITION].L!.map(pos => parseInt(pos.N!));
-          const averageTokenCount = indexMetadata.tokenCount.get(attribute.name)! / indexMetadata.docCount;
-          const tf = occurrence / (occurrence + this.bm25.k1 * (1 - this.bm25.b + this.bm25.b * (tokenCount / averageTokenCount)));
-          const score = boost * tf * idf * (this.bm25.k1 + 1);
-          if (candidates.has(encodedKeys)) {
-            candidates.get(encodedKeys)!.push({ token: words[i], positions, score });
-          } else {
-            candidates.set(encodedKeys, [{ token: words[i], positions, score }]);
-          }
-        });
-      }
+      consumedCapacity += results[i].consumedCapacity;
+      results[i].items.forEach(({ encodedKeys, positions, score }) => {
+        if (candidates.has(encodedKeys)) {
+          candidates.get(encodedKeys)!.push({ token: words[i], positions, score: score * boost });
+        } else {
+          candidates.set(encodedKeys, [{ token: words[i], positions, score: score * boost }]);
+        }
+      });
     }
     if (phrase) {
       const slop = typeof query[attributeName] !== 'string' ? (query[attributeName].slop ?? 0) : 0;
@@ -709,17 +736,40 @@ class DynamoSearch {
     return { items, consumedCapacity };
   }
 
-  private multiMatchQuery({ query, type = 'best_fields', fields = ['*'], ...options }: MultiMatchQuery, indexMetadata: IndexMetadata) {
-    const attributes: (Attribute & { boost: number })[] = [];
-    for (let i = 0; i < this.attributes.length; i++) {
-      for (let j = 0; j < fields.length; j++) {
-        const attributeName = fields[j].split('^')[0];
-        if (new RegExp(`^${attributeName.replaceAll('*', '.*')}$`).test(this.attributes[i].name)) {
-          attributes.push({ ...this.attributes[i], boost: parseFloat(fields[j].split('^')[1] || '1') });
-          break;
-        }
+  private async combinedFieldsQuery({ query, fields, operator = 'OR', minimumShouldMatch = 1 }: CombinedFieldsQuery, indexMetadata: IndexMetadata) {
+    const attributes = this.getMatchedAttributes(fields);
+    if (attributes.length === 0) {
+      return { items: new Map<string, number>(), consumedCapacity: 0 };
+    }
+    let consumedCapacity = 0;
+    const _items = new Map<string, { count: number; score: number; }>();
+    const tokens = await attributes[0].analyzer.analyze(query);
+    const words = [...new Set(tokens.map(token => token.token))];
+    for (let i = 0; i < words.length; i++) {
+      const results = await Promise.all(attributes.map(attribute => this.fetchTokens(attribute, words[i], indexMetadata)));
+      const candidates = new Map<string, number>();
+      for (let i = 0; i < results.length; i++) {
+        consumedCapacity += results[i].consumedCapacity;
+        results[i].items.forEach(({ encodedKeys, score }) => {
+          candidates.set(encodedKeys, (candidates.get(encodedKeys) ?? 0) + score * attributes[i].boost);
+        });
+      }
+      for (const [encodedKeys, score] of candidates.entries()) {
+        _items.set(encodedKeys, { count: (_items.get(encodedKeys)?.count ?? 0) + 1, score: (_items.get(encodedKeys)?.score ?? 0) + score });
       }
     }
+    const items = new Map<string, number>();
+    for (const [encodedKeys, { count, score }] of _items.entries()) {
+      if ((operator === 'AND' && count === words.length) || (operator === 'OR' && count >= minimumShouldMatch)) {
+        items.set(encodedKeys, score);
+      }
+    }
+
+    return { items, consumedCapacity };
+  }
+
+  private multiMatchQuery({ query, type = 'best_fields', fields = ['*'], ...options }: MultiMatchQuery, indexMetadata: IndexMetadata) {
+    const attributes = this.getMatchedAttributes(fields);
     if (type === 'best_fields') {
       return this.disjunctionMaxQuery({
         queries: attributes.map(attr => ({
@@ -734,6 +784,9 @@ class DynamoSearch {
         })),
       }, indexMetadata);
     }
+    if (type === 'cross_fields') {
+      return this.combinedFieldsQuery({ query, fields, ...options }, indexMetadata);
+    }
     if (type === 'phrase') {
       return this.booleanQuery({
         should: attributes.map(attr => ({
@@ -746,6 +799,21 @@ class DynamoSearch {
 
   private simpleQueryStringQuery({ query, fields = ['*'], defaultOperator = 'OR' }: SimpleQueryStringQuery, indexMetadata: IndexMetadata) {
     return this._query(parse(query, { fields, defaultOperator }), indexMetadata);
+  }
+
+  private getMatchedAttributes(fields: string[]) {
+    const attributes: (Attribute & { boost: number })[] = [];
+    for (let i = 0; i < this.attributes.length; i++) {
+      for (let j = 0; j < fields.length; j++) {
+        const attributeName = fields[j].split('^')[0];
+        if (new RegExp(`^${attributeName.replaceAll('*', '.*')}$`).test(this.attributes[i].name)) {
+          attributes.push({ ...this.attributes[i], boost: parseFloat(fields[j].split('^')[1] || '1') });
+          break;
+        }
+      }
+    }
+
+    return attributes;
   }
 
   /**
