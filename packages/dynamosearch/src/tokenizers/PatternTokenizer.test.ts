@@ -25,6 +25,14 @@ test('PatternTokenizer', async () => {
 });
 
 test('PatternTokenizer', async () => {
+  const tokenizer = new PatternTokenizer({ pattern: /\s+/g });
+  const tokens = await tokenizer.tokenize('comma,separated,values');
+  expect(tokens).toMatchObject([
+    { token: 'comma,separated,values', startOffset: 0, endOffset: 22, position: 0 },
+  ]);
+});
+
+test('PatternTokenizer', async () => {
   const tokenizer = new PatternTokenizer({ pattern: /"((?:\\"|[^"]|\\")*)"/g, group: 1 });
   const tokens = await tokenizer.tokenize('"value", "value with embedded \\" quote"');
   expect(tokens).toMatchObject([

@@ -1,0 +1,96 @@
+import { test, expect } from 'vitest';
+import KuromojiPartOfSpeechStopFilter from './KuromojiPartOfSpeechStopFilter.js';
+
+test('KuromojiPartOfSpeechStopFilter', () => {
+  const filter = new KuromojiPartOfSpeechStopFilter();
+  const input = [
+    {
+      token: '寿司',
+      startOffset: 0,
+      endOffset: 2,
+      position: 0,
+      metadata: {
+        word_id: 2747750,
+        word_type: 'KNOWN',
+        word_position: 1,
+        surface_form: '寿司',
+        pos: '名詞',
+        pos_detail_1: '一般',
+        pos_detail_2: '*',
+        pos_detail_3: '*',
+        conjugated_type: '*',
+        conjugated_form: '*',
+        basic_form: '寿司',
+        reading: 'スシ',
+        pronunciation: 'スシ',
+      },
+    },
+    {
+      token: 'が',
+      startOffset: 2,
+      endOffset: 3,
+      position: 1,
+      metadata: {
+        word_id: 92920,
+        word_type: 'KNOWN',
+        word_position: 3,
+        surface_form: 'が',
+        pos: '助詞',
+        pos_detail_1: '格助詞',
+        pos_detail_2: '一般',
+        pos_detail_3: '*',
+        conjugated_type: '*',
+        conjugated_form: '*',
+        basic_form: 'が',
+        reading: 'ガ',
+        pronunciation: 'ガ',
+      },
+    },
+    {
+      token: 'おいしい',
+      startOffset: 3,
+      endOffset: 7,
+      position: 2,
+      metadata: {
+        word_id: 810400,
+        word_type: 'KNOWN',
+        word_position: 4,
+        surface_form: 'おいしい',
+        pos: '形容詞',
+        pos_detail_1: '自立',
+        pos_detail_2: '*',
+        pos_detail_3: '*',
+        conjugated_type: '形容詞・イ段',
+        conjugated_form: '基本形',
+        basic_form: 'おいしい',
+        reading: 'オイシイ',
+        pronunciation: 'オイシイ',
+      },
+    },
+    {
+      token: 'ね',
+      startOffset: 7,
+      endOffset: 8,
+      position: 3,
+      metadata: {
+        word_id: 92590,
+        word_type: 'KNOWN',
+        word_position: 8,
+        surface_form: 'ね',
+        pos: '助詞',
+        pos_detail_1: '終助詞',
+        pos_detail_2: '*',
+        pos_detail_3: '*',
+        conjugated_type: '*',
+        conjugated_form: '*',
+        basic_form: 'ね',
+        reading: 'ネ',
+        pronunciation: 'ネ',
+      },
+    },
+  ];
+  expect(filter.apply(input)).toEqual([
+    { token: '寿司', startOffset: 0, endOffset: 2, position: 0, metadata: input[0].metadata },
+    { token: 'おいしい', startOffset: 3, endOffset: 7, position: 2, metadata: input[2].metadata },
+  ]);
+});

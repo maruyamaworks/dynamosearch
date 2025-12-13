@@ -10,3 +10,11 @@ test('SimplePatternSplitTokenizer', async () => {
     { token: 'phrase', startOffset: 15, endOffset: 21, position: 2 },
   ]);
 });
+
+test('SimplePatternSplitTokenizer', async () => {
+  const tokenizer = new SimplePatternSplitTokenizer({ pattern: /\s+/ });
+  const tokens = await tokenizer.tokenize('an_underscored_phrase');
+  expect(tokens).toMatchObject([
+    { token: 'an_underscored_phrase', startOffset: 0, endOffset: 21, position: 0 },
+  ]);
+});
