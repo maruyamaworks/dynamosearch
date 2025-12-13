@@ -61,12 +61,15 @@ export type Query =
   | { constantScore: ConstantScoreQuery }
   | { disMax: DisjunctionMaxQuery };
 
+export type Operator = 'OR' | 'AND';
+export type MinimumShouldMatch = number | string;
+
 export interface BooleanQuery {
   must?: Query[];
   filter?: Query[];
   should?: Query[];
   mustNot?: Query[];
-  minimumShouldMatch?: number;
+  minimumShouldMatch?: MinimumShouldMatch;
 }
 
 export interface BoostingQuery {
@@ -89,8 +92,8 @@ export interface MatchQuery {
   [attributeName: string]: string | {
     query: string;
     boost?: number;
-    operator?: 'OR' | 'AND';
-    minimumShouldMatch?: number;
+    operator?: Operator;
+    minimumShouldMatch?: MinimumShouldMatch;
   };
 }
 
@@ -105,8 +108,8 @@ export interface MatchPhraseQuery {
 export interface CombinedFieldsQuery {
   query: string;
   fields: string[];
-  operator?: 'OR' | 'AND';
-  minimumShouldMatch?: number;
+  operator?: Operator;
+  minimumShouldMatch?: MinimumShouldMatch;
 }
 
 export type MultiMatchQuery =
@@ -114,16 +117,16 @@ export type MultiMatchQuery =
       query: string;
       type?: 'best_fields';
       fields?: string[];
-      operator?: 'OR' | 'AND';
-      minimumShouldMatch?: number;
+      operator?: Operator;
+      minimumShouldMatch?: MinimumShouldMatch;
       tieBreaker?: number;
     }
   | {
       query: string;
       type: 'most_fields';
       fields?: string[];
-      operator?: 'OR' | 'AND';
-      minimumShouldMatch?: number;
+      operator?: Operator;
+      minimumShouldMatch?: MinimumShouldMatch;
     }
   | {
       query: string;
@@ -135,8 +138,8 @@ export type MultiMatchQuery =
       query: string;
       type: 'cross_fields';
       fields?: string[];
-      operator?: 'OR' | 'AND';
-      minimumShouldMatch?: number;
+      operator?: Operator;
+      minimumShouldMatch?: MinimumShouldMatch;
     };
 
 export interface SimpleQueryStringQuery {
@@ -147,8 +150,8 @@ export interface SimpleQueryStringQuery {
 
 export interface SearchOptions {
   attributes?: string[];
-  operator?: 'OR' | 'AND';
-  minimumShouldMatch?: number;
+  operator?: Operator;
+  minimumShouldMatch?: MinimumShouldMatch;
   maxItems?: number;
   minScore?: number;
 }
@@ -625,7 +628,7 @@ class DynamoSearch {
         consumedCapacity += result.consumedCapacity;
       }
       for (const [encodedKeys, { count, score }] of candidates.entries()) {
-        if (count >= (query.minimumShouldMatch ?? 1) && (((query.must || []).length === 0 && (query.filter || []).length === 0) || items.has(encodedKeys))) {
+        if (this.checkMinimumShouldMatch(query.minimumShouldMatch, count, query.should.length) && (((query.must || []).length === 0 && (query.filter || []).length === 0) || items.has(encodedKeys))) {
           items.set(encodedKeys, (items.get(encodedKeys) ?? 0) + score);
         }
       }
@@ -727,7 +730,7 @@ class DynamoSearch {
       const operator = typeof query[attributeName] !== 'string' ? (query[attributeName].operator ?? 'OR') : 'OR';
       const minimumShouldMatch = typeof query[attributeName] !== 'string' ? (query[attributeName].minimumShouldMatch ?? 1) : 1;
       for (const [encodedKeys, tokenDetails] of candidates.entries()) {
-        if ((operator === 'AND' && tokenDetails.length === words.length) || (operator === 'OR' && tokenDetails.length >= minimumShouldMatch)) {
+        if ((operator === 'AND' && tokenDetails.length === words.length) || (operator === 'OR' && this.checkMinimumShouldMatch(minimumShouldMatch, tokenDetails.length, words.length))) {
           items.set(encodedKeys, (items.get(encodedKeys) ?? 0) + tokenDetails.reduce((acc, cur) => acc + cur.score, 0));
         }
       }
@@ -760,7 +763,7 @@ class DynamoSearch {
     }
     const items = new Map<string, number>();
     for (const [encodedKeys, { count, score }] of _items.entries()) {
-      if ((operator === 'AND' && count === words.length) || (operator === 'OR' && count >= minimumShouldMatch)) {
+      if ((operator === 'AND' && count === words.length) || (operator === 'OR' && this.checkMinimumShouldMatch(minimumShouldMatch, count, words.length))) {
         items.set(encodedKeys, score);
       }
     }
@@ -814,6 +817,29 @@ class DynamoSearch {
     }
 
     return attributes;
+  }
+
+  private checkMinimumShouldMatch(minimumShouldMatch: MinimumShouldMatch = 1, matched: number, total: number): boolean {
+    if (typeof minimumShouldMatch === 'number') {
+      if (minimumShouldMatch > 0) return matched >= minimumShouldMatch;
+      return matched >= total + minimumShouldMatch;
+    }
+    if (minimumShouldMatch.match(/^-?\d+(\.\d+)?$/)) {
+      return this.checkMinimumShouldMatch(parseInt(minimumShouldMatch, 10), matched, total);
+    }
+    if (minimumShouldMatch.match(/^-?\d+(\.\d+)?%$/)) {
+      const percentage = parseFloat(minimumShouldMatch.slice(0, -1));
+      return this.checkMinimumShouldMatch(Math.trunc((percentage / 100) * total), matched, total);
+    }
+    const rules = minimumShouldMatch.split(/\s+/);
+    for (let i = rules.length - 1; i >= 0; i--) {
+      if (!rules[i].match(/^\d+<-?\d+(\.\d+)?%?$/)) {
+        throw new Error(`Invalid minimumShouldMatch value: "${minimumShouldMatch}"`);
+      }
+      const num = parseInt(rules[i].split('<')[0], 10);
+      if (num < total) return this.checkMinimumShouldMatch(rules[i].split('<')[1], matched, total);
+    }
+    return matched === total;
   }
 
   /**
