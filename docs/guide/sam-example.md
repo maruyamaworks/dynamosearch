@@ -144,11 +144,11 @@ export const handler: DynamoDBStreamHandler = async (event) => {
   const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: process.env.INDEX_TABLE_NAME!,
-    attributes: [
+    fields: [
       { name: 'title', analyzer },
       { name: 'description', analyzer },
     ],
-    keys: [
+    keySchema: [
       { name: 'id', type: 'HASH' },
     ],
   });
@@ -171,17 +171,17 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: process.env.INDEX_TABLE_NAME!,
-    attributes: [
+    fields: [
       { name: 'title', analyzer },
       { name: 'description', analyzer },
     ],
-    keys: [
+    keySchema: [
       { name: 'id', type: 'HASH' },
     ],
   });
 
   const results = await dynamosearch.search(query, {
-    attributes: ['title^2', 'description'], // Boost title 2x
+    fields: ['title^2', 'description'], // Boost title 2x
     maxItems: 20,
   });
 

@@ -20,11 +20,11 @@ import type Analyzer from './analyzers/Analyzer.js';
 
 const BATCH_SIZE = 25;
 
-export interface Attribute {
+export interface Field {
   name: string;
   analyzer: Analyzer;
   shortName?: string;
-  mapper?: (value: AWSLambda.AttributeValue) => string[];
+  getValue?: (record: Record<string, AWSLambda.AttributeValue>) => string[];
 }
 
 export interface Key {
@@ -34,8 +34,8 @@ export interface Key {
 
 export interface Options {
   indexTableName: string;
-  attributes: Attribute[];
-  keys: Key[];
+  fields: Field[];
+  keySchema: Key[];
   dynamoDBClientConfig?: DynamoDBClientConfig;
   bm25Params?: Partial<BM25Params>;
 }
@@ -89,7 +89,7 @@ export interface DisjunctionMaxQuery {
 }
 
 export interface MatchQuery {
-  [attributeName: string]: string | {
+  [fieldName: string]: string | {
     query: string;
     boost?: number;
     operator?: Operator;
@@ -98,7 +98,7 @@ export interface MatchQuery {
 }
 
 export interface MatchPhraseQuery {
-  [attributeName: string]: string | {
+  [fieldName: string]: string | {
     query: string;
     boost?: number;
     slop?: number;
@@ -145,12 +145,13 @@ export type MultiMatchQuery =
 export interface SimpleQueryStringQuery {
   query: string;
   fields?: string[];
-  defaultOperator?: 'OR' | 'AND';
+  defaultOperator?: Operator;
+  minimumShouldMatch?: MinimumShouldMatch;
 }
 
 export interface SearchOptions {
-  attributes?: string[];
-  operator?: Operator;
+  fields?: string[];
+  defaultOperator?: Operator;
   minimumShouldMatch?: MinimumShouldMatch;
   maxItems?: number;
   minScore?: number;
@@ -211,7 +212,7 @@ const extractStringValues = (value?: AWSLambda.AttributeValue): string[] => {
 class DynamoSearch {
   private client: DynamoDBClient;
   private indexTableName: string;
-  private attributes: Attribute[];
+  private fields: Field[];
   private partitionKeyName: string;
   private sortKeyName?: string;
   private bm25: BM25Params;
@@ -236,9 +237,9 @@ class DynamoSearch {
   constructor(options: Options) {
     this.client = new DynamoDBClient({ ...options.dynamoDBClientConfig });
     this.indexTableName = options.indexTableName;
-    this.attributes = options.attributes;
-    this.partitionKeyName = options.keys.find(key => key.type === 'HASH')!.name;
-    this.sortKeyName = options.keys.find(key => key.type === 'RANGE')?.name;
+    this.fields = options.fields;
+    this.partitionKeyName = options.keySchema.find(key => key.type === 'HASH')!.name;
+    this.sortKeyName = options.keySchema.find(key => key.type === 'RANGE')?.name;
     this.bm25 = { k1: 1.2, b: 0.75, ...options.bm25Params };
   }
 
@@ -309,7 +310,7 @@ class DynamoSearch {
     };
   }
 
-  private async fetchTokens(attribute: Attribute, token: string, indexMetadata: IndexMetadata) {
+  private async fetchTokens(field: Field, token: string, indexMetadata: IndexMetadata) {
     const { Items, ConsumedCapacity } = await this.client.send(new QueryCommand({
       TableName: this.indexTableName,
       KeyConditionExpression: '#pk = :pk',
@@ -321,7 +322,7 @@ class DynamoSearch {
         '#pos': DynamoSearch.ATTR_POSITION,
       },
       ExpressionAttributeValues: {
-        ':pk': { S: `${attribute.shortName || attribute.name};${token}` },
+        ':pk': { S: `${field.shortName || field.name};${token}` },
       },
       ReturnConsumedCapacity: 'TOTAL',
       ScanIndexForward: false,
@@ -335,7 +336,7 @@ class DynamoSearch {
       const tokenCount = Buffer.from(item[DynamoSearch.ATTR_SK].B!).readUInt32BE(2);
       const encodedKeys = item[DynamoSearch.ATTR_KEYS].S!;
       const positions = item[DynamoSearch.ATTR_POSITION].L!.map(pos => parseInt(pos.N!));
-      const averageTokenCount = indexMetadata.tokenCount.get(attribute.name)! / indexMetadata.docCount;
+      const averageTokenCount = indexMetadata.tokenCount.get(field.name)! / indexMetadata.docCount;
       const tf = occurrence / (occurrence + this.bm25.k1 * (1 - this.bm25.b + this.bm25.b * (tokenCount / averageTokenCount)));
       const score = tf * idf * (this.bm25.k1 + 1);
       return { encodedKeys, positions, score };
@@ -346,11 +347,11 @@ class DynamoSearch {
 
   async insertTokens(item: Record<string, AWSLambda.AttributeValue>, resultMap = new Map<string, number>()) {
     let inserted = 0;
-    for (let i = 0; i < this.attributes.length; i++) {
+    for (let i = 0; i < this.fields.length; i++) {
       const tokens = new Map<string, number[]>();
-      const attributeValues = (this.attributes[i].mapper ?? extractStringValues)(item[this.attributes[i].name]);
-      const result = (await Promise.all(attributeValues.map(str => this.attributes[i].analyzer.analyze(str)))).flat();
-      resultMap.set(this.attributes[i].name, (resultMap.get(this.attributes[i].name) ?? 0) + result.length);
+      const values = this.fields[i].getValue ? this.fields[i].getValue!(item) : extractStringValues(item[this.fields[i].name]);
+      const result = (await Promise.all(values.map(str => this.fields[i].analyzer.analyze(str)))).flat();
+      resultMap.set(this.fields[i].name, (resultMap.get(this.fields[i].name) ?? 0) + result.length);
       for (let j = 0; j < result.length; j++) {
         if (tokens.has(result[j].token)) {
           tokens.get(result[j].token)!.push(result[j].position);
@@ -370,7 +371,7 @@ class DynamoSearch {
               buffer.writeUInt32BE(Math.min(2 ** 32 - 1, result.length), 2);
               hash.copy(buffer, 6, 0, 8);
               const data = {
-                [DynamoSearch.ATTR_PK]: { S: `${this.attributes[i].shortName || this.attributes[i].name};${token}` },
+                [DynamoSearch.ATTR_PK]: { S: `${this.fields[i].shortName || this.fields[i].name};${token}` },
                 [DynamoSearch.ATTR_SK]: { B: buffer },
                 [DynamoSearch.ATTR_KEYS]: { S: encodedKeys },
                 [DynamoSearch.ATTR_HASH]: { B: hash.subarray(0, 1) },
@@ -413,9 +414,9 @@ class DynamoSearch {
 
     for (let i = 0; i < items.length; i++) {
       const [shortName]: (string | undefined)[] = items[i][DynamoSearch.ATTR_PK].S!.split(';');
-      const attributeName = this.attributes.find(attr => attr.shortName === shortName)?.name ?? shortName;
+      const fieldName = this.fields.find(field => field.shortName === shortName)?.name ?? shortName;
       const occurrence = Buffer.from(items[i][DynamoSearch.ATTR_SK].B!).readUInt16BE(0);
-      resultMap.set(attributeName, (resultMap.get(attributeName) ?? 0) - occurrence);
+      resultMap.set(fieldName, (resultMap.get(fieldName) ?? 0) - occurrence);
     }
     let deleted = 0;
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
@@ -435,11 +436,11 @@ class DynamoSearch {
   async exportTokensAsFile(path: string, item: Record<string, AWSLambda.AttributeValue>, resultMap = new Map<string, number>(), metadata = true) {
     let inserted = 0;
     let text = '';
-    for (let i = 0; i < this.attributes.length; i++) {
+    for (let i = 0; i < this.fields.length; i++) {
       const tokens = new Map<string, number[]>();
-      const attributeValues = (this.attributes[i].mapper ?? extractStringValues)(item[this.attributes[i].name]);
-      const result = (await Promise.all(attributeValues.map(str => this.attributes[i].analyzer.analyze(str)))).flat();
-      resultMap.set(this.attributes[i].name, (resultMap.get(this.attributes[i].name) ?? 0) + result.length);
+      const values = this.fields[i].getValue ? this.fields[i].getValue!(item) : extractStringValues(item[this.fields[i].name]);
+      const result = (await Promise.all(values.map(str => this.fields[i].analyzer.analyze(str)))).flat();
+      resultMap.set(this.fields[i].name, (resultMap.get(this.fields[i].name) ?? 0) + result.length);
       for (let j = 0; j < result.length; j++) {
         if (tokens.has(result[j].token)) {
           tokens.get(result[j].token)!.push(result[j].position);
@@ -455,7 +456,7 @@ class DynamoSearch {
         buffer.writeUInt32BE(Math.min(2 ** 32 - 1, result.length), 2);
         hash.copy(buffer, 6, 0, 8);
         const data = {
-          [DynamoSearch.ATTR_PK]: { S: `${this.attributes[i].shortName || this.attributes[i].name};${token}` },
+          [DynamoSearch.ATTR_PK]: { S: `${this.fields[i].shortName || this.fields[i].name};${token}` },
           [DynamoSearch.ATTR_SK]: { B: buffer.toString('base64') },
           [DynamoSearch.ATTR_KEYS]: { S: encodedKeys },
           [DynamoSearch.ATTR_HASH]: { B: hash.subarray(0, 1).toString('base64') },
@@ -470,8 +471,8 @@ class DynamoSearch {
         [DynamoSearch.ATTR_PK]: { S: '_' },
         [DynamoSearch.ATTR_SK]: { B: Buffer.alloc(1).toString('base64') },
         [DynamoSearch.ATTR_META_DOCUMENT_COUNT]: { N: inserted.toString() },
-        ...Object.fromEntries([...resultMap.entries()].map(([attributeName, value]) => {
-          const shortName = this.attributes.find(attr => attr.name === attributeName)?.shortName ?? attributeName;
+        ...Object.fromEntries([...resultMap.entries()].map(([fieldName, value]) => {
+          const shortName = this.fields.find(field => field.name === fieldName)?.shortName ?? fieldName;
           return [`${DynamoSearch.ATTR_META_TOKEN_COUNT}:${shortName}`, { N: value.toString() }];
         })),
       };
@@ -492,8 +493,8 @@ class DynamoSearch {
       docCount: parseInt(Item?.[DynamoSearch.ATTR_META_DOCUMENT_COUNT].N ?? '0'),
       tokenCount: new Map(Object.entries(Item ?? {}).filter(([key]) => key.startsWith(`${DynamoSearch.ATTR_META_TOKEN_COUNT}:`)).map(([key, value]) => {
         const shortName = key.replace(`${DynamoSearch.ATTR_META_TOKEN_COUNT}:`, '');
-        const attributeName = this.attributes.find(attr => attr.shortName === shortName)?.name ?? shortName;
-        return [attributeName, parseInt(value.N ?? '0')];
+        const fieldName = this.fields.find(field => field.shortName === shortName)?.name ?? shortName;
+        return [fieldName, parseInt(value.N ?? '0')];
       })),
     };
   }
@@ -508,8 +509,8 @@ class DynamoSearch {
       ':val': { N: docCount.toString() },
     };
     const entries = [...tokenCount.entries()];
-    entries.forEach(([attributeName, value], index) => {
-      const shortName = this.attributes.find(attr => attr.name === attributeName)?.shortName ?? attributeName;
+    entries.forEach(([fieldName, value], index) => {
+      const shortName = this.fields.find(field => field.name === fieldName)?.shortName ?? fieldName;
       updateExpressions.push(`#attr${index} = if_not_exists(#attr${index}, :zero) + :val${index}`);
       expressionAttributeNames[`#attr${index}`] = `${DynamoSearch.ATTR_META_TOKEN_COUNT}:${shortName}`;
       expressionAttributeValues[`:val${index}`] = { N: value.toString() };
@@ -702,13 +703,13 @@ class DynamoSearch {
     let consumedCapacity = 0;
     const items = new Map<string, number>();
 
-    const attributeName = Object.keys(query)[0];
-    const attribute = this.attributes.find(attr => attr.name === attributeName)!;
-    const tokens = await attribute.analyzer.analyze(typeof query[attributeName] === 'string' ? query[attributeName] : query[attributeName].query);
+    const fieldName = Object.keys(query)[0];
+    const field = this.fields.find(({ name }) => name === fieldName)!;
+    const tokens = await field.analyzer.analyze(typeof query[fieldName] === 'string' ? query[fieldName] : query[fieldName].query);
     const words = [...new Set(tokens.map(token => token.token))];
-    const results = await Promise.all(words.map(word => this.fetchTokens(attribute, word, indexMetadata)));
+    const results = await Promise.all(words.map(word => this.fetchTokens(field, word, indexMetadata)));
     const candidates = new Map<string, { token: string; positions: number[]; score: number }[]>();
-    const boost = typeof query[attributeName] !== 'string' ? (query[attributeName].boost ?? 1) : 1;
+    const boost = typeof query[fieldName] !== 'string' ? (query[fieldName].boost ?? 1) : 1;
     for (let i = 0; i < results.length; i++) {
       consumedCapacity += results[i].consumedCapacity;
       results[i].items.forEach(({ encodedKeys, positions, score }) => {
@@ -720,15 +721,15 @@ class DynamoSearch {
       });
     }
     if (phrase) {
-      const slop = typeof query[attributeName] !== 'string' ? (query[attributeName].slop ?? 0) : 0;
+      const slop = typeof query[fieldName] !== 'string' ? (query[fieldName].slop ?? 0) : 0;
       for (const [encodedKeys, tokenDetails] of candidates.entries()) {
         if (this.checkPhraseMatch(tokens.map(t => t.position), tokens.map(t => tokenDetails.find(d => d.token === t.token)?.positions ?? []), slop)) {
           items.set(encodedKeys, (items.get(encodedKeys) ?? 0) + tokenDetails.reduce((acc, cur) => acc + cur.score, 0));
         }
       }
     } else {
-      const operator = typeof query[attributeName] !== 'string' ? (query[attributeName].operator ?? 'OR') : 'OR';
-      const minimumShouldMatch = typeof query[attributeName] !== 'string' ? (query[attributeName].minimumShouldMatch ?? 1) : 1;
+      const operator = typeof query[fieldName] !== 'string' ? (query[fieldName].operator ?? 'OR') : 'OR';
+      const minimumShouldMatch = typeof query[fieldName] !== 'string' ? (query[fieldName].minimumShouldMatch ?? 1) : 1;
       for (const [encodedKeys, tokenDetails] of candidates.entries()) {
         if ((operator === 'AND' && tokenDetails.length === words.length) || (operator === 'OR' && this.checkMinimumShouldMatch(minimumShouldMatch, tokenDetails.length, words.length))) {
           items.set(encodedKeys, (items.get(encodedKeys) ?? 0) + tokenDetails.reduce((acc, cur) => acc + cur.score, 0));
@@ -740,21 +741,21 @@ class DynamoSearch {
   }
 
   private async combinedFieldsQuery({ query, fields, operator = 'OR', minimumShouldMatch = 1 }: CombinedFieldsQuery, indexMetadata: IndexMetadata) {
-    const attributes = this.getMatchedAttributes(fields);
-    if (attributes.length === 0) {
+    const _fields = this.getMatchedFields(fields);
+    if (_fields.length === 0) {
       return { items: new Map<string, number>(), consumedCapacity: 0 };
     }
     let consumedCapacity = 0;
     const _items = new Map<string, { count: number; score: number; }>();
-    const tokens = await attributes[0].analyzer.analyze(query);
+    const tokens = await _fields[0].analyzer.analyze(query);
     const words = [...new Set(tokens.map(token => token.token))];
     for (let i = 0; i < words.length; i++) {
-      const results = await Promise.all(attributes.map(attribute => this.fetchTokens(attribute, words[i], indexMetadata)));
+      const results = await Promise.all(_fields.map(field => this.fetchTokens(field, words[i], indexMetadata)));
       const candidates = new Map<string, number>();
       for (let i = 0; i < results.length; i++) {
         consumedCapacity += results[i].consumedCapacity;
         results[i].items.forEach(({ encodedKeys, score }) => {
-          candidates.set(encodedKeys, (candidates.get(encodedKeys) ?? 0) + score * attributes[i].boost);
+          candidates.set(encodedKeys, (candidates.get(encodedKeys) ?? 0) + score * _fields[i].boost);
         });
       }
       for (const [encodedKeys, score] of candidates.entries()) {
@@ -772,18 +773,18 @@ class DynamoSearch {
   }
 
   private multiMatchQuery({ query, type = 'best_fields', fields = ['*'], ...options }: MultiMatchQuery, indexMetadata: IndexMetadata) {
-    const attributes = this.getMatchedAttributes(fields);
+    const _fields = this.getMatchedFields(fields);
     if (type === 'best_fields') {
       return this.disjunctionMaxQuery({
-        queries: attributes.map(attr => ({
-          match: { [attr.name]: { query, boost: attr.boost, ...options } },
+        queries: _fields.map(field => ({
+          match: { [field.name]: { query, boost: field.boost, ...options } },
         })),
       }, indexMetadata);
     }
     if (type === 'most_fields') {
       return this.booleanQuery({
-        should: attributes.map(attr => ({
-          match: { [attr.name]: { query, boost: attr.boost, ...options } },
+        should: _fields.map(field => ({
+          match: { [field.name]: { query, boost: field.boost, ...options } },
         })),
       }, indexMetadata);
     }
@@ -792,31 +793,31 @@ class DynamoSearch {
     }
     if (type === 'phrase') {
       return this.booleanQuery({
-        should: attributes.map(attr => ({
-          matchPhrase: { [attr.name]: { query, boost: attr.boost, ...options } },
+        should: _fields.map(field => ({
+          matchPhrase: { [field.name]: { query, boost: field.boost, ...options } },
         })),
       }, indexMetadata);
     }
     throw new Error(`Unknown query type: "${type}"`);
   }
 
-  private simpleQueryStringQuery({ query, fields = ['*'], defaultOperator = 'OR' }: SimpleQueryStringQuery, indexMetadata: IndexMetadata) {
-    return this._query(parse(query, { fields, defaultOperator }), indexMetadata);
+  private simpleQueryStringQuery({ query, fields = ['*'], defaultOperator = 'OR', minimumShouldMatch = 1 }: SimpleQueryStringQuery, indexMetadata: IndexMetadata) {
+    return this._query(parse(query, { fields, defaultOperator, minimumShouldMatch }), indexMetadata);
   }
 
-  private getMatchedAttributes(fields: string[]) {
-    const attributes: (Attribute & { boost: number })[] = [];
-    for (let i = 0; i < this.attributes.length; i++) {
+  private getMatchedFields(fields: string[]) {
+    const _fields: (Field & { boost: number })[] = [];
+    for (let i = 0; i < this.fields.length; i++) {
       for (let j = 0; j < fields.length; j++) {
-        const attributeName = fields[j].split('^')[0];
-        if (new RegExp(`^${attributeName.replaceAll('*', '.*')}$`).test(this.attributes[i].name)) {
-          attributes.push({ ...this.attributes[i], boost: parseFloat(fields[j].split('^')[1] || '1') });
+        const fieldName = fields[j].split('^')[0];
+        if (new RegExp(`^${fieldName.replaceAll('*', '.*')}$`).test(this.fields[i].name)) {
+          _fields.push({ ...this.fields[i], boost: parseFloat(fields[j].split('^')[1] || '1') });
           break;
         }
       }
     }
 
-    return attributes;
+    return _fields;
   }
 
   private checkMinimumShouldMatch(minimumShouldMatch: MinimumShouldMatch = 1, matched: number, total: number): boolean {
@@ -895,23 +896,10 @@ class DynamoSearch {
     };
   }
 
-  async search(query: string, { attributes, operator = 'OR', minimumShouldMatch, maxItems = 10, minScore = 0 }: SearchOptions = {}) {
-    const _attributes: (Attribute & { boost?: number })[] = attributes?.map((attributeName) => {
-      const attribute = this.attributes.find(attr => attr.name === attributeName.split('^')[0]);
-      const boost = parseFloat(attributeName.split('^')[1] || '1');
-      if (!attribute) {
-        throw new Error(`Attribute not found: ${attributeName}`);
-      }
-      return { ...attribute, boost };
-    }) ?? this.attributes;
-
+  async search(query: string, { fields, defaultOperator = 'OR', minimumShouldMatch, maxItems = 10, minScore = 0 }: SearchOptions = {}) {
     return this.query({
       query: {
-        bool: {
-          should: _attributes.map(attr => ({
-            match: { [attr.name]: { query, operator, minimumShouldMatch } },
-          })),
-        },
+        simpleQueryString: { query, fields, defaultOperator, minimumShouldMatch },
       },
       size: maxItems,
       minScore,

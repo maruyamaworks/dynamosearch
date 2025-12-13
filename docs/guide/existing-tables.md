@@ -75,11 +75,11 @@ const analyzer = new StandardAnalyzer();
 
 const dynamosearch = new DynamoSearch({
   indexTableName: 'articles-index',
-  attributes: [
+  fields: [
     { name: 'title', analyzer, shortName: 't' },
     { name: 'content', analyzer, shortName: 'c' },
   ],
-  keys: [
+  keySchema: [
     { name: 'id', type: 'HASH' },
   ],
 });
@@ -108,11 +108,11 @@ import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer';
 const analyzer = new StandardAnalyzer();
 const dynamosearch = new DynamoSearch({
   indexTableName: 'articles-index',
-  attributes: [
+  fields: [
     { name: 'title', analyzer, shortName: 't' },
     { name: 'content', analyzer, shortName: 'c' },
   ],
-  keys: [
+  keySchema: [
     { name: 'id', type: 'HASH' },
   ],
 });
@@ -207,11 +207,11 @@ import { gunzipSync } from 'node:zlib';
 const analyzer = new StandardAnalyzer();
 const dynamosearch = new DynamoSearch({
   indexTableName: 'articles-index',
-  attributes: [
+  fields: [
     { name: 'title', analyzer, shortName: 't' },
     { name: 'content', analyzer, shortName: 'c' },
   ],
-  keys: [
+  keySchema: [
     { name: 'id', type: 'HASH' },
   ],
 });
@@ -265,7 +265,7 @@ After backfilling, verify that your index is working correctly:
 ```typescript
 // Test search
 const results = await dynamosearch.search('machine learning', {
-  attributes: ['title^2', 'content'],
+  fields: ['title^2', 'content'],
   maxItems: 10,
 });
 

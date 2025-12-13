@@ -9,8 +9,8 @@ beforeAll(async () => {
   const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
-    attributes: [{ name: 'Message', analyzer }],
-    keys: [{ name: 'Id', type: 'HASH' }],
+    fields: [{ name: 'Message', analyzer }],
+    keySchema: [{ name: 'Id', type: 'HASH' }],
     dynamoDBClientConfig: {
       endpoint: 'http://localhost:8000',
     },
@@ -47,8 +47,8 @@ test('processRecords (INSERT)', async () => {
   const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
-    attributes: [{ name: 'Message', analyzer }],
-    keys: [{ name: 'Id', type: 'HASH' }],
+    fields: [{ name: 'Message', analyzer }],
+    keySchema: [{ name: 'Id', type: 'HASH' }],
     dynamoDBClientConfig: {
       endpoint: 'http://localhost:8000',
     },
@@ -131,8 +131,8 @@ test('search', async () => {
   const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
-    attributes: [{ name: 'Message', analyzer }],
-    keys: [{ name: 'Id', type: 'HASH' }],
+    fields: [{ name: 'Message', analyzer }],
+    keySchema: [{ name: 'Id', type: 'HASH' }],
     dynamoDBClientConfig: {
       endpoint: 'http://localhost:8000',
     },
@@ -180,8 +180,8 @@ test('processRecords (MODIFY)', async () => {
   const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
-    attributes: [{ name: 'Message', analyzer }],
-    keys: [{ name: 'Id', type: 'HASH' }],
+    fields: [{ name: 'Message', analyzer }],
+    keySchema: [{ name: 'Id', type: 'HASH' }],
     dynamoDBClientConfig: {
       endpoint: 'http://localhost:8000',
     },
@@ -237,8 +237,8 @@ test('reindex', async () => {
   const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
-    attributes: [{ name: 'Message', analyzer }],
-    keys: [{ name: 'Id', type: 'HASH' }],
+    fields: [{ name: 'Message', analyzer }],
+    keySchema: [{ name: 'Id', type: 'HASH' }],
     dynamoDBClientConfig: {
       endpoint: 'http://localhost:8000',
     },
@@ -283,8 +283,8 @@ test('exportTokensAsFile', async () => {
   const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
-    attributes: [{ name: 'Message', analyzer }],
-    keys: [{ name: 'Id', type: 'HASH' }],
+    fields: [{ name: 'Message', analyzer }],
+    keySchema: [{ name: 'Id', type: 'HASH' }],
     dynamoDBClientConfig: {
       endpoint: 'http://localhost:8000',
     },
@@ -331,8 +331,8 @@ test('processRecords (REMOVE)', async () => {
   const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
-    attributes: [{ name: 'Message', analyzer }],
-    keys: [{ name: 'Id', type: 'HASH' }],
+    fields: [{ name: 'Message', analyzer }],
+    keySchema: [{ name: 'Id', type: 'HASH' }],
     dynamoDBClientConfig: {
       endpoint: 'http://localhost:8000',
     },

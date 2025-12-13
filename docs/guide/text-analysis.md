@@ -230,7 +230,7 @@ const tokens = await analyzer.analyze('<p>Hello</p> World');
 // ]
 ```
 
-## Per-Attribute Analyzers
+## Per-Field Analyzers
 
 Different fields can use different analyzers:
 
@@ -243,11 +243,11 @@ const keywordAnalyzer = new KeywordAnalyzer();
 
 const dynamosearch = new DynamoSearch({
   indexTableName: 'articles-index',
-  attributes: [
+  fields: [
     { name: 'title', analyzer: standardAnalyzer },
     { name: 'content', analyzer: standardAnalyzer },
     { name: 'category', analyzer: keywordAnalyzer },
   ],
-  keys: [{ name: 'id', type: 'HASH' }],
+  keySchema: [{ name: 'id', type: 'HASH' }],
 });
 ```

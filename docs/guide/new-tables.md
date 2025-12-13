@@ -80,10 +80,9 @@ const dynamosearch = new DynamoSearch({
 
   /**
    * Attributes of the source table to be indexed for full-text search.
-   * Specify the attribute name and the analyzer to use for each attribute.
    * Short names are optional but highly recommended to save your costs.
    */
-  attributes: [
+  fields: [
     { name: 'title', analyzer, shortName: 't' },
     { name: 'content', analyzer, shortName: 'c' },
   ],
@@ -92,7 +91,7 @@ const dynamosearch = new DynamoSearch({
    * Primary key configuration of the source table.
    * Specify in the same format as KeySchema in DynamoDB CreateTable API.
    */
-  keys: [
+  keySchema: [
     { name: 'id', type: 'HASH' },
   ],
 });
@@ -235,11 +234,11 @@ import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer';
 const analyzer = new StandardAnalyzer();
 const dynamosearch = new DynamoSearch({
   indexTableName: 'articles-index',
-  attributes: [
+  fields: [
     { name: 'title', analyzer, shortName: 't' },
     { name: 'content', analyzer, shortName: 'c' },
   ],
-  keys: [
+  keySchema: [
     { name: 'id', type: 'HASH' },
   ],
 });
@@ -348,18 +347,18 @@ import StandardAnalyzer from 'dynamosearch/analyzers/StandardAnalyzer';
 const analyzer = new StandardAnalyzer();
 const dynamosearch = new DynamoSearch({
   indexTableName: 'articles-index',
-  attributes: [
+  fields: [
     { name: 'title', analyzer, shortName: 't' },
     { name: 'content', analyzer, shortName: 'c' },
   ],
-  keys: [
+  keySchema: [
     { name: 'id', type: 'HASH' },
   ],
 });
 
 // Search for documents containing "machine learning"
 const results = await dynamosearch.search('machine learning', {
-  attributes: ['title^2', 'content'], // Boost title 2x
+  fields: ['title^2', 'content'], // Boost title 2x
   maxItems: 10,
 });
 
@@ -422,8 +421,8 @@ import DynamoSearch from 'dynamosearch';
 
 const dynamosearch = new DynamoSearch({
   indexTableName: 'articles-index',
-  attributes: [/* ... */],
-  keys: [/* ... */],
+  fields: [/* ... */],
+  keySchema: [/* ... */],
   dynamoDBClientConfig: {
     region: 'us-east-1',
     credentials: {

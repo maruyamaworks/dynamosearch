@@ -2,18 +2,18 @@
 
 Since search indexes can contain a large number of items (one item per token per document), optimizing your DynamoDB usage can significantly reduce costs.
 
-## Use Short Attribute Names
+## Use Short Field Names
 
 Reduce storage costs and RCU/RRU consumption by using short names:
 
 ```typescript
 const dynamosearch = new DynamoSearch({
   indexTableName: 'search-index',
-  attributes: [
+  fields: [
     { name: 'title', shortName: 't', analyzer },
     { name: 'description', shortName: 'd', analyzer },
   ],
-  keys: [{ name: 'id', type: 'HASH' }],
+  keySchema: [{ name: 'id', type: 'HASH' }],
 });
 ```
 
@@ -28,7 +28,7 @@ Only index fields that need to be searchable:
 ```typescript
 // ❌ Index everything
 const dynamosearch = new DynamoSearch({
-  attributes: [
+  fields: [
     { name: 'title', analyzer },
     { name: 'description', analyzer },
     { name: 'metadata', analyzer }, // Not searchable, wastes space
@@ -39,7 +39,7 @@ const dynamosearch = new DynamoSearch({
 
 // ✅ Index only searchable fields
 const dynamosearch = new DynamoSearch({
-  attributes: [
+  fields: [
     { name: 'title', analyzer },
     { name: 'description', analyzer },
     { name: 'tags', analyzer },
@@ -81,23 +81,23 @@ Track capacity usage:
 
 ```typescript
 const results = await dynamosearch.search('query', {
-  attributes: ['title', 'description'],
+  fields: ['title', 'description'],
 });
 
 console.log('Capacity units consumed:', results.consumedCapacity.capacityUnits);
 console.log('Table:', results.consumedCapacity.tableName);
 ```
 
-## Search Fewer Attributes
+## Search Fewer Fields
 
 ```typescript
 // More expensive
 const results = await dynamosearch.search('query', {
-  attributes: ['title', 'description', 'tags'],
+  fields: ['title', 'description', 'tags'],
 });
 
 // Less expensive
 const results = await dynamosearch.search('query', {
-  attributes: ['title'],
+  fields: ['title'],
 });
 ```

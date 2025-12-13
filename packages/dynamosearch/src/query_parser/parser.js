@@ -792,7 +792,7 @@ function peg$parse(input, options) {
       return { bool: { must: [head[1]] } };
     }
     /** @type {import("../index.js").BooleanQuery} */
-    const bool = {};
+    const bool = { minimumShouldMatch: options.minimumShouldMatch };
     const defaultClause = options.defaultOperator === 'AND' ? 'must' : 'should';
     /** @type {keyof typeof bool} */
     let clause = defaultClause;

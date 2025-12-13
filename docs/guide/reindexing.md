@@ -6,7 +6,7 @@ Learn how to reindex your documents when you need to rebuild or update your sear
 
 You need to reindex when:
 
-- **Adding new attributes** - Make existing fields searchable
+- **Adding new fields** - Make existing fields searchable
 - **Changing analyzers** - Apply different text analysis
 - **Fixing data issues** - Correct indexing problems
 - **Migrating schemas** - Update key structure
@@ -28,11 +28,11 @@ const client = new DynamoDBClient({});
 const analyzer = new StandardAnalyzer();
 const dynamosearch = new DynamoSearch({
   indexTableName: 'articles-index',
-  attributes: [
+  fields: [
     { name: 'title', analyzer },
     { name: 'content', analyzer },
   ],
-  keys: [{ name: 'id', type: 'HASH' }],
+  keySchema: [{ name: 'id', type: 'HASH' }],
 });
 
 // Scan all items

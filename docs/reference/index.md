@@ -14,7 +14,7 @@ Creates a new DynamoSearch instance.
 
 - **options** (`Options`) - Configuration object
   - **indexTableName** (`string`) - Name of the search index table
-  - **attributes** (`Attribute[]`) - Searchable attributes configuration
+  - **fields** (`Field[]`) - Searchable fields configuration
   - **keys** (`Key[]`) - Primary key structure from source table
   - **dynamoDBClientConfig** (`DynamoDBClientConfig`, optional) - AWS SDK DynamoDB client configuration
 
@@ -28,20 +28,20 @@ const analyzer = new StandardAnalyzer();
 
 const dynamosearch = new DynamoSearch({
   indexTableName: 'my-search-index',
-  attributes: [
+  fields: [
     { name: 'title', analyzer, shortName: 't' },
     { name: 'body', analyzer, shortName: 'b' },
   ],
-  keys: [
+  keySchema: [
     { name: 'id', type: 'HASH' },
   ],
 });
 ```
 
-### Attribute Configuration
+### Field Configuration
 
 ```typescript
-interface Attribute {
+interface Field {
   name: string;        // Field name in DynamoDB table
   analyzer: Analyzer;  // Text analyzer to use
   shortName?: string;  // Optional short name for storage optimization (recommended)
@@ -161,7 +161,7 @@ Searches the index using BM25 ranking.
 
 - **query** (`string`) - Search query text
 - **options** (optional)
-  - **attributes** (`string[]`) - Attributes to search with optional boost (e.g., `'title^2'`)
+  - **fields** (`string[]`) - Fields to search with optional boost (e.g., `'title^2'`)
   - **operator** (`'OR' | 'AND'`, optional) - Query operator (default: `'OR'`)
     - `'OR'`: Documents match if they contain any of the query terms
     - `'AND'`: Documents match only if they contain all query terms
@@ -203,11 +203,11 @@ console.log(results.items);
 // ]
 ```
 
-#### With Attribute Boosting
+#### With Field Boosting
 
 ```typescript
 const results = await dynamosearch.search('machine learning', {
-  attributes: ['title^3', 'abstract^2', 'body'],
+  fields: ['title^3', 'abstract^2', 'body'],
 });
 ```
 
@@ -260,7 +260,7 @@ console.log('Consumed capacity:', results.consumedCapacity.capacityUnits);
 ### Performance Notes
 
 - Each unique token in the query generates one DynamoDB Query operation
-- Consumed capacity scales with number of unique tokens × number of attributes searched
+- Consumed capacity scales with number of unique tokens × number of fields searched
 - Results are sorted in-memory after retrieval (top-k selection)
 
 ## reindex()
@@ -309,7 +309,7 @@ The exported file can be uploaded to an S3 bucket and imported into DynamoDB usi
 
 - **path** (`string`) - File path to write tokens to
 - **item** (`Record<string, AttributeValue>`) - DynamoDB item to tokenize
-- **resultMap** (`Map<string, number>`, optional) - Map to accumulate token counts per attribute (default: `new Map()`)
+- **resultMap** (`Map<string, number>`, optional) - Map to accumulate token counts per field (default: `new Map()`)
 - **metadata** (`boolean`, optional) - Include metadata record in output (default: `true`)
 
 ### Returns
@@ -317,7 +317,7 @@ The exported file can be uploaded to an S3 bucket and imported into DynamoDB usi
 ```typescript
 interface ExportResult {
   inserted: number;               // Number of unique tokens exported
-  resultMap: Map<string, number>; // Accumulated token counts per attribute
+  resultMap: Map<string, number>; // Accumulated token counts per field
 }
 ```
 
@@ -466,13 +466,13 @@ indexTableName: string
 
 Name of the search index table.
 
-### attributes
+### fields
 
 ```typescript
-attributes: Attribute[]
+fields: Field[]
 ```
 
-Array of searchable attributes configuration.
+Array of searchable fields configuration.
 
 ### partitionKeyName
 
