@@ -294,10 +294,15 @@ test('search', async () => {
   const dynamosearch = createDynamoSearchClient();
   const { items } = await dynamosearch.search('quick brown fox');
   expect(items).toEqual([
-    {
-      keys: { id: { N: '1' } },
-      score: expect.closeTo(2.82),
-    },
+    { keys: { id: { N: '1' } }, score: expect.closeTo(2.82) },
+  ]);
+});
+
+test('search', async () => {
+  const dynamosearch = createDynamoSearchClient();
+  const { items } = await dynamosearch.search('quick brown "fox');
+  expect(items).toEqual([
+    { keys: { id: { N: '1' } }, score: expect.closeTo(2.82) },
   ]);
 });
 
@@ -357,5 +362,5 @@ test('minimum should match (invalid parameter)', async () => {
   const query = dynamosearch.query({
     query: { match: { description: { query: 'quick brown fox jumps', minimumShouldMatch: '50% 25%' } } },
   });
-  expect(query).rejects.toThrowError('Invalid minimumShouldMatch value');
+  await expect(query).rejects.toThrowError('Invalid minimumShouldMatch value');
 });

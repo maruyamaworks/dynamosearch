@@ -115,7 +115,7 @@ QuotedChar
   / "\\" @.
 
 UnquotedChar
-  = [^+|"()\-: \t\n\r\\]
+  = [^+|"()\- \t\n\r\\]
   / "\\" @.
 
 Integer

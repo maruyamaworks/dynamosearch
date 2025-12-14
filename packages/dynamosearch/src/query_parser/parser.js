@@ -173,7 +173,7 @@ function peg$parse(input, options) {
 
   const peg$r0 = /^[+|]/;
   const peg$r1 = /^[^"\\]/;
-  const peg$r2 = /^[^+|"()\-: \t\n\r\\]/;
+  const peg$r2 = /^[^+|"()\- \t\n\r\\]/;
   const peg$r3 = /^[0-9]/;
   const peg$r4 = /^[ \t\n\r]/;
 
@@ -186,7 +186,7 @@ function peg$parse(input, options) {
   const peg$e6 = peg$classExpectation(["\"", "\\"], true, false, false);
   const peg$e7 = peg$literalExpectation("\\", false);
   const peg$e8 = peg$anyExpectation();
-  const peg$e9 = peg$classExpectation(["+", "|", "\"", "(", ")", "-", ":", " ", "\t", "\n", "\r", "\\"], true, false, false);
+  const peg$e9 = peg$classExpectation(["+", "|", "\"", "(", ")", "-", " ", "\t", "\n", "\r", "\\"], true, false, false);
   const peg$e10 = peg$classExpectation([["0", "9"]], false, false, false);
   const peg$e11 = peg$classExpectation([" ", "\t", "\n", "\r"], false, false, false);
 

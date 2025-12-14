@@ -14,7 +14,7 @@ import {
   type CreateTableCommandInput,
   type DynamoDBClientConfig,
 } from '@aws-sdk/client-dynamodb';
-import { parse } from './query_parser/parser.js';
+import { parse, SyntaxError } from './query_parser/parser.js';
 import type { DynamoDBRecord } from 'aws-lambda';
 import type Analyzer from './analyzers/Analyzer.js';
 
@@ -802,7 +802,16 @@ class DynamoSearch {
   }
 
   private simpleQueryStringQuery({ query, fields = ['*'], defaultOperator = 'OR', minimumShouldMatch = 1 }: SimpleQueryStringQuery, indexMetadata: IndexMetadata) {
-    return this._query(parse(query, { fields, defaultOperator, minimumShouldMatch }), indexMetadata);
+    let parsed: Query;
+    try {
+      parsed = parse(query, { fields, defaultOperator, minimumShouldMatch });
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+      console.warn(`Invalid SimpleQueryString: ${query}`);
+      const escaped = query.replace(/[+|"()-]/g, '');
+      parsed = parse(escaped, { fields, defaultOperator, minimumShouldMatch });
+    }
+    return this._query(parsed, indexMetadata);
   }
 
   private getMatchedFields(fields: string[]) {
