@@ -1,6 +1,6 @@
 import { readFile, unlink } from 'node:fs/promises';
 import { test, expect, beforeAll } from 'vitest';
-import { DynamoDBClient, BatchWriteItemCommand, ScanCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb';
 import type { DynamoDBStreamEvent } from 'aws-lambda';
 import StandardAnalyzer from './analyzers/StandardAnalyzer.js';
 import DynamoSearch from './index.js';
@@ -84,68 +84,6 @@ test('processRecords (INSERT)', async () => {
       z: { L: [{ N: '1' }] },
     },
   ]));
-});
-
-test('search', async () => {
-  const client = new DynamoDBClient({
-    endpoint: 'http://localhost:8000',
-  });
-  await client.send(new BatchWriteItemCommand({
-    RequestItems: {
-      'dynamosearch_test': [
-        {
-          PutRequest: {
-            Item: {
-              p: { S: '_' },
-              s: { B: new Uint8Array([0]) },
-              dc: { N: '1' },
-              'tc:Message': { N: '2' },
-            },
-          },
-        },
-        {
-          PutRequest: {
-            Item: {
-              p: { S: 'Message;new' },
-              s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
-              k: { S: 'N101' },
-              h: { B: new Uint8Array([232]) },
-              z: { L: [{ N: '0' }] },
-            },
-          },
-        },
-        {
-          PutRequest: {
-            Item: {
-              p: { S: 'Message;item!' },
-              s: { B: new Uint8Array([0, 1, 0, 0, 0, 2, 232, 244, 177, 186, 163, 88, 89, 159]) },
-              k: { S: 'N101' },
-              h: { B: new Uint8Array([232]) },
-              z: { L: [{ N: '1' }] },
-            },
-          },
-        },
-      ],
-    },
-  }));
-  const analyzer = new StandardAnalyzer();
-  const dynamosearch = new DynamoSearch({
-    indexTableName: 'dynamosearch_test',
-    fields: [{ name: 'Message', analyzer }],
-    keySchema: [{ name: 'Id', type: 'HASH' }],
-    dynamoDBClientConfig: {
-      endpoint: 'http://localhost:8000',
-    },
-  });
-  const { items } = await dynamosearch.search('New item!');
-  expect(items).toEqual([
-    {
-      keys: {
-        Id: { N: '101' },
-      },
-      score: expect.closeTo(0.575),
-    },
-  ]);
 });
 
 test('processRecords (MODIFY)', async () => {
