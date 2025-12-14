@@ -1,6 +1,6 @@
 {
   "name": "dynamosearch",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "license": "MIT",
   "author": "Kenichi Maruyama <11133876+maruyamaworks@users.noreply.github.com>",
   "main": "dist/index.js",
@@ -24,10 +24,11 @@
     "build": "tsc",
     "generate:parser": "pnpm dlx peggy -o src/query_parser/parser.js --format es --dts --return-types '{\"start\":\"import(\\\"../index.js\\\").Query\"}' src/query_parser/SimpleQueryString.peg.js"
   },
-  "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.929.0"
-  },
   "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.929.0",
     "@types/aws-lambda": "^8.10.158"
+  },
+  "peerDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.929.0"
   }
 }
