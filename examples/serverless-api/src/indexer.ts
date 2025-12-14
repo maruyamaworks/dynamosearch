@@ -8,11 +8,11 @@ export const handler: DynamoDBStreamHandler = async (event) => {
   const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: process.env.INDEX_TABLE_NAME!,
-    attributes: [
+    fields: [
       { name: 'title', analyzer },
       { name: 'description', analyzer },
     ],
-    keys: [
+    keySchema: [
       { name: 'id', type: 'HASH' },
     ],
   });

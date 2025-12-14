@@ -13,20 +13,20 @@ console.log(`${products.length} products loaded`);
 const analyzer = new KuromojiAnalyzer();
 const dynamosearch = new DynamoSearch({
   indexTableName: 'dynamosearch-demo-products-jp-index',
-  attributes: [
+  fields: [
     { name: 'product_title', shortName: 't', analyzer },
     { name: 'product_description', shortName: 'd', analyzer },
     { name: 'product_bullet_point', shortName: 'p', analyzer },
     { name: 'product_brand', shortName: 'b', analyzer },
     { name: 'product_color', shortName: 'c', analyzer },
   ],
-  keys: [
+  keySchema: [
     { name: 'product_id', type: 'HASH' },
   ],
 });
 console.time('Query Time');
 const { items, consumedCapacity } = await dynamosearch.search(process.argv[2], {
-  attributes: ['product_title', 'product_description'],
+  fields: ['product_title', 'product_description'],
   maxItems: 10,
 });
 console.log('\n======== RESULTS ========');

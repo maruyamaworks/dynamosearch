@@ -67,14 +67,14 @@ if (cluster.isWorker) {
   const analyzer = new KuromojiAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch-demo-products-jp-index',
-    attributes: [
+    fields: [
       { name: 'product_title', shortName: 't', analyzer },
       { name: 'product_description', shortName: 'd', analyzer },
       { name: 'product_bullet_point', shortName: 'p', analyzer },
       { name: 'product_brand', shortName: 'b', analyzer },
       { name: 'product_color', shortName: 'c', analyzer },
     ],
-    keys: [
+    keySchema: [
       { name: 'product_id', type: 'HASH' },
     ],
   });
