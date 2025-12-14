@@ -3,6 +3,7 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",
+    "allowJs": true,
     "composite": true,
     "declaration": true,
     "declarationMap": true
@@ -11,6 +12,7 @@
     "src/**/*"
   ],
   "exclude": [
-    "src/**/*.test.ts"
+    "src/**/*.test.ts",
+    "src/**/*.peg.js"
   ]
 }
