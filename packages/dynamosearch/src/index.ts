@@ -541,7 +541,7 @@ class DynamoSearch {
     await this.updateIndexMetadata({ docCount: count, tokenCount: resultMap });
   }
 
-  async reindex(items: Record<string, AttributeValue>[]) {
+  async index(items: Record<string, AttributeValue>[]) {
     let count = 0;
     const resultMap = new Map<string, number>();
     for (let i = 0; i < items.length; i++) {

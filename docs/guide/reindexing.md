@@ -45,7 +45,7 @@ do {
     ExclusiveStartKey: exclusiveStartKey,
   }));
   if (Items) {
-    await dynamosearch.reindex(Items);
+    await dynamosearch.index(Items);
     indexedCount += Items.length;
   }
   exclusiveStartKey = LastEvaluatedKey;

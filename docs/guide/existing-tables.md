@@ -235,7 +235,7 @@ async function backfillFromExport(exportDir: string) {
     const batchSize = 1000;
     for (let i = 0; i < items.length; i += batchSize) {
       const batch = items.slice(i, i + batchSize);
-      await dynamosearch.reindex(batch);
+      await dynamosearch.index(batch);
       totalIndexed += batch.length;
       console.log(`  Indexed ${totalIndexed} items...`);
     }
@@ -291,7 +291,7 @@ do {
     ExclusiveStartKey: exclusiveStartKey,
   }));
   if (Items) {
-    await dynamosearch.reindex(Items);
+    await dynamosearch.index(Items);
     indexedCount += Items.length;
   }
   exclusiveStartKey = LastEvaluatedKey;

@@ -468,10 +468,10 @@ const results = await dynamosearch.search('machine learning algorithms', {
 - Consumed capacity scales with number of unique tokens × number of fields searched
 - Results are sorted in-memory after retrieval (top-k selection)
 
-## reindex()
+## index()
 
 ```typescript
-async reindex(items: Record<string, AttributeValue>[]): Promise<void>
+async index(items: Record<string, AttributeValue>[]): Promise<void>
 ```
 
 Reindexes existing documents. Useful for bulk indexing or index updates.
@@ -492,7 +492,7 @@ const { Items } = await client.send(new ScanCommand({
   TableName: 'articles',
 }));
 
-await dynamosearch.reindex(Items);
+await dynamosearch.index(Items);
 ```
 
 ## exportTokensAsFile()

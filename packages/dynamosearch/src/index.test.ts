@@ -171,7 +171,7 @@ test('processRecords (MODIFY)', async () => {
   ]));
 });
 
-test('reindex', async () => {
+test('index', async () => {
   const analyzer = new StandardAnalyzer();
   const dynamosearch = new DynamoSearch({
     indexTableName: 'dynamosearch_test',
@@ -181,7 +181,7 @@ test('reindex', async () => {
       endpoint: 'http://localhost:8000',
     },
   });
-  await dynamosearch.reindex([{
+  await dynamosearch.index([{
     Message: { S: 'New item!' },
     Id: { N: '101' },
   }]);

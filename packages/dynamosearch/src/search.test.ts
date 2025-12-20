@@ -23,7 +23,7 @@ beforeAll(async () => {
   const dynamosearch = createDynamoSearchClient();
   await dynamosearch.deleteIndexTable({ ifExists: true });
   await dynamosearch.createIndexTable();
-  await dynamosearch.reindex([
+  await dynamosearch.index([
     {
       id: { N: '1' },
       title: { S: 'Example Item #1' },
