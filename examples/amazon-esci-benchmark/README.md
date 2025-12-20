@@ -38,7 +38,7 @@ wget https://github.com/amazon-science/esci-data/raw/refs/heads/main/shopping_qu
 Run the indexing script to process the dataset and generate JSON Lines files:
 
 ```bash
-node index.ts
+node index.ts --locale [us|es|jp] /path/to/shopping_queries_dataset_products.parquet
 ```
 
 This script will:

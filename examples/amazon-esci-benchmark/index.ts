@@ -1,14 +1,30 @@
 import cluster from 'node:cluster';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { availableParallelism } from 'node:os';
+import { parseArgs } from 'node:util';
 import DynamoSearch from 'dynamosearch';
+import EnglishAnalyzer from 'dynamosearch/analyzers/EnglishAnalyzer';
+import SpanishAnalyzer from 'dynamosearch/analyzers/SpanishAnalyzer';
 import KuromojiAnalyzer from '@dynamosearch/plugin-analysis-kuromoji/analyzers/KuromojiAnalyzer';
 import { asyncBufferFromFile, parquetReadObjects } from 'hyparquet';
 
+const { values, positionals } = parseArgs({
+  options: { locale: { type: 'string', short: 'l', default: 'us' } },
+  allowPositionals: true,
+});
+if (values.locale !== 'us' && values.locale !== 'es' && values.locale !== 'jp') {
+  console.log('usage: node index.ts --locale [us|es|jp] /path/to/shopping_queries_dataset_products.parquet');
+  throw new Error('locale must be either "us", "es" or "jp".');
+}
+if (positionals.length < 1) {
+  console.log('usage: node index.ts --locale [us|es|jp] /path/to/shopping_queries_dataset_products.parquet');
+  throw new Error('path to the parquet file must be specified.');
+}
+
 if (cluster.isPrimary) {
   console.log('loading parquet file...');
-  const file = await asyncBufferFromFile('./shopping_queries_dataset_products.parquet');
-  const products = (await parquetReadObjects({ file })).filter(item => item.product_locale === 'jp');
+  const file = await asyncBufferFromFile(positionals[0]);
+  const products = (await parquetReadObjects({ file })).filter(item => item.product_locale === values.locale);
   console.log(`${products.length} products loaded`);
 
   const numCPUs = availableParallelism();
@@ -64,9 +80,20 @@ if (cluster.isWorker) {
   let count = 0;
   const resultMap = new Map<string, number>();
 
-  const analyzer = new KuromojiAnalyzer();
+  let analyzer;
+  switch (values.locale) {
+    case 'us':
+      analyzer = new EnglishAnalyzer();
+      break;
+    case 'es':
+      analyzer = new SpanishAnalyzer();
+      break;
+    case 'jp':
+      analyzer = new KuromojiAnalyzer();
+      break;
+  }
   const dynamosearch = new DynamoSearch({
-    indexTableName: 'dynamosearch-demo-products-jp-index',
+    indexTableName: `dynamosearch-demo-products-${values.locale}-index`,
     fields: [
       { name: 'product_title', shortName: 't', analyzer },
       { name: 'product_description', shortName: 'd', analyzer },
