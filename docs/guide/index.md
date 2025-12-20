@@ -14,15 +14,15 @@ Install DynamoSearch using npm, yarn, or pnpm:
 ::: code-group
 
 ```bash [npm]
-npm install dynamosearch
+npm install dynamosearch @aws-sdk/client-dynamodb
 ```
 
 ```bash [yarn]
-yarn add dynamosearch
+yarn add dynamosearch @aws-sdk/client-dynamodb
 ```
 
 ```bash [pnpm]
-pnpm add dynamosearch
+pnpm add dynamosearch @aws-sdk/client-dynamodb
 ```
 
 :::

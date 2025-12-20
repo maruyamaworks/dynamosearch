@@ -6,22 +6,27 @@ aside: false
 This page demonstrates ultra-fast search powered by DynamoSearch on [Amazon's publicly available product dataset](https://github.com/amazon-science/esci-data) containing over 1 million items. Enter a search query below to see results.
 
 <div class="demo-container">
-  <div style="display: flex; align-items: center; margin-bottom: 1rem; gap: 1rem;">
+  <div class="locale-toggle-container">
     <fieldset class="locale-toggle">
-      <label v-for="item in locales" :key="item.value">
+      <label
+        v-for="item in locales"
+        :class="['locale-button', { active: locale === item.value }]"
+        :key="item.value"
+      >
         <button
           @click="locale = item.value; query = ''"
-          :class="['locale-button', { active: locale === item.value }]"
           :disabled="loading"
         >
           <div class="radio"></div>
-          {{ item.label }}
+          <div class="locale-label">
+            <div>{{ item.label }}</div>
+            <div class="total-count">
+              {{ item.total.toLocaleString() }} products
+            </div>
+          </div>
         </button>
       </label>
     </fieldset>
-    <div class="total-count">
-      {{ locales.find(({ value }) => value === locale).total.toLocaleString() }} products
-    </div>
   </div>
 
   <div class="search-box">
@@ -31,7 +36,7 @@ This page demonstrates ultra-fast search powered by DynamoSearch on [Amazon's pu
       @keyup.prevent.enter="performSearch"
       type="text"
       :disabled="loading"
-      :placeholder="`Search products (e.g., ${locale === 'us' ? 'wireless headphones, coffee maker...' : 'ワイヤレスヘッドフォン、コーヒーメーカー...'})`"
+      :placeholder="`Search products (e.g., ${locale === 'us' ? 'wireless headphones, coffee maker...' : locale === 'es' ? 'auriculares inalámbricos, cafetera...' : 'ワイヤレスヘッドフォン、コーヒーメーカー...'})`"
       class="search-input"
     />
     <button @click="onClickSubmit" class="search-button" :disabled="loading">
@@ -94,8 +99,9 @@ const expandedItems = ref(new Set());
 const overflowingItems = ref(new Set());
 
 const locales = [
-  { value: 'us', label: 'US', total: 1215854, scanRCU: 183299.5 },
-  { value: 'jp', label: 'JP', total: 339059, scanRCU: 46450.0 },
+  { value: 'us', label: 'English', total: 1215854 },
+  { value: 'es', label: 'Spanish', total: 260011 },
+  { value: 'jp', label: 'Japanese', total: 339059 },
 ];
 
 const allowSubmit = () => {
@@ -167,44 +173,56 @@ const escape = (str) => {
   margin: 2rem 0;
 }
 
+.locale-toggle-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem; gap: 1rem;
+}
+
 .locale-toggle {
   border: none;
   display: flex;
+  width: 100%;
 }
 
-.locale-toggle label:first-child .locale-button {
+.locale-button {
+  border: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-2);
+  cursor: pointer;
+  flex-grow: 1;
+  margin-left: -1px;
+  padding: 0.5rem 1rem;
+}
+
+.locale-button button {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.locale-button:first-child {
   border-top-left-radius: 8px;
   border-bottom-left-radius: 8px;
+  margin-left: 0;
 }
 
-.locale-toggle label:last-child .locale-button {
+.locale-button:last-child {
   border-top-right-radius: 8px;
   border-bottom-right-radius: 8px;
 }
 
-.locale-button {
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--vp-c-text-2);
-  border: 1px solid var(--vp-c-divider);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
 .locale-button.active {
-  color: var(--vp-c-text-1);
-  border-color: var(--vp-c-brand-1);
   background: var(--vp-c-brand-soft);
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-text-1);
+  z-index: 1;
 }
 
 .locale-button .radio {
+  border: solid 1px var(--vp-c-divider);
   border-radius: 100%;
+  margin-top: 0.25rem;
   width: 1rem;
   height: 1rem;
-  border: solid 1px var(--vp-c-divider);
 }
 
 .locale-button.active .radio {
@@ -213,18 +231,57 @@ const escape = (str) => {
 }
 
 .locale-button.active .radio::after {
-  content: '';
-  position: absolute;
   background-color: var(--vp-c-bg);
   border-radius: 100%;
+  content: '';
+  margin: auto;
+  position: absolute;
+  inset: 0;
   width: 0.375rem;
   height: 0.375rem;
-  inset: 0;
-  margin: auto;
+}
+
+.locale-label {
+  display: flex;
+  align-items: start;
+  flex-direction: column;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .total-count {
-  font-size: 14px;
+  font-size: 0.75rem;
+  margin-top: -0.25rem;
+  opacity: 0.75;
+}
+
+@media (max-width: 640px) {
+  .locale-toggle-container {
+    flex-direction: column;
+  }
+  .locale-toggle {
+    flex-direction: column;
+  }
+  .locale-button {
+    margin-left: 0;
+    margin-top: -1px;
+  }
+  .locale-button:first-child {
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 0;
+    margin-top: 0;
+  }
+  .locale-button:last-child {
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 8px;
+  }
+  .locale-label {
+    flex-direction: row;
+    gap: 1rem;
+  }
+  .total-count {
+    margin-top: 1px;
+  }
 }
 
 .search-box {

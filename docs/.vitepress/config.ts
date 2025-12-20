@@ -31,15 +31,6 @@ export default withMermaid({
       { text: 'Guide', link: '/guide/' },
       { text: 'Reference', link: '/reference/' },
       { text: 'Live Demo', link: '/demo' },
-      {
-        text: 'v0.3.0',
-        items: [
-          {
-            text: 'Changelog',
-            link: 'https://github.com/maruyamaworks/dynamosearch/releases',
-          },
-        ],
-      },
     ],
     sidebar: {
       '/guide/': [
@@ -64,9 +55,15 @@ export default withMermaid({
           ],
         },
         {
+          text: 'Core Concepts',
+          items: [
+            { text: 'Searching', link: '/guide/searching' },
+            { text: 'Text Analysis', link: '/guide/text-analysis' },
+          ],
+        },
+        {
           text: 'Advanced',
           items: [
-            { text: 'Text Analysis', link: '/guide/text-analysis' },
             { text: 'Cost Optimization', link: '/guide/cost-optimization' },
             { text: 'Index Table', link: '/guide/index-table' },
             { text: 'Reindexing', link: '/guide/reindexing' },

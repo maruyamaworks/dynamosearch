@@ -149,28 +149,159 @@ export const handler: DynamoDBStreamHandler = async (event) => {
 };
 ```
 
-## search()
+## query()
 
 ```typescript
-async search(query: string, options?: SearchOptions): Promise<SearchResult>
+async query(options: QueryOptions): Promise<SearchResult>
 ```
 
-Searches the index using BM25 ranking.
+Executes a structured query against the index using BM25 ranking. Supports multiple query types for flexible search scenarios.
 
 ### Parameters
 
-- **query** (`string`) - Search query text
-- **options** (optional)
-  - **fields** (`string[]`) - Fields to search with optional boost (e.g., `'title^2'`)
-  - **operator** (`'OR' | 'AND'`, optional) - Query operator (default: `'OR'`)
-    - `'OR'`: Documents match if they contain any of the query terms
-    - `'AND'`: Documents match only if they contain all query terms
-  - **minimumShouldMatch** (`number`, optional) - Minimum number of query terms that must match (only applies when `operator` is `'OR'`)
-  - **maxItems** (`number`) - Maximum results to return (default: `100`)
-  - **minScore** (`number`) - Minimum relevance score (default: `0`)
-  - **bm25** (`BM25Params`) - BM25 parameters
-    - **k1** (`number`) - Term frequency saturation (default: `1.2`)
-    - **b** (`number`) - Length normalization (default: `0.75`)
+- **options** (`QueryOptions`)
+  - **query** (`Query`) - Query object (see Query Types below)
+  - **size** (`number`, optional) - Maximum results to return (default: `10`)
+  - **minScore** (`number`, optional) - Minimum relevance score (default: `0`)
+
+### Query Types
+
+#### Match Query
+
+Searches for text in a specific field with optional parameters.
+
+```typescript
+{
+  match: {
+    [fieldName]: string | {
+      query: string;
+      boost?: number;
+      operator?: 'OR' | 'AND';
+      minimumShouldMatch?: number;
+    }
+  }
+}
+```
+
+#### Match Phrase Query
+
+Searches for exact phrase matches in a specific field.
+
+```typescript
+{
+  matchPhrase: {
+    [fieldName]: string | {
+      query: string;
+      boost?: number;
+      slop?: number;  // Maximum positions between tokens
+    }
+  }
+}
+```
+
+#### Combined Fields Query
+
+Searches across multiple fields as if they were one combined field.
+
+```typescript
+{
+  combinedFields: {
+    query: string;
+    fields: string[];  // Field names with optional boost (e.g., 'title^2')
+    operator?: 'OR' | 'AND';
+    minimumShouldMatch?: number;
+  }
+}
+```
+
+#### Multi-Match Query
+
+Searches across multiple fields with different matching strategies.
+
+```typescript
+{
+  multiMatch: {
+    query: string;
+    type?: 'best_fields' | 'most_fields' | 'phrase' | 'cross_fields';
+    fields?: string[];
+    operator?: 'OR' | 'AND';
+    minimumShouldMatch?: number;
+    tieBreaker?: number;  // For 'best_fields' type
+    slop?: number;        // For 'phrase' type
+  }
+}
+```
+
+#### Simple Query String Query
+
+Parses query string with operators (`+`, `-`, `|`, `"phrase"`).
+
+```typescript
+{
+  simpleQueryString: {
+    query: string;
+    fields?: string[];
+    defaultOperator?: 'OR' | 'AND';
+    minimumShouldMatch?: number;
+  }
+}
+```
+
+#### Boolean Query
+
+Combines multiple queries with boolean logic.
+
+```typescript
+{
+  bool: {
+    must?: Query[];      // All queries must match
+    filter?: Query[];    // All queries must match (no scoring)
+    should?: Query[];    // At least one query should match
+    mustNot?: Query[];   // Queries must not match
+    minimumShouldMatch?: number;
+  }
+}
+```
+
+#### Boosting Query
+
+Demotes documents matching negative query.
+
+```typescript
+{
+  boosting: {
+    positive: Query;
+    negative: Query;
+    negativeBoost: number;  // Multiplier for negative matches (0-1)
+  }
+}
+```
+
+#### Constant Score Query
+
+Wraps a query with a constant score.
+
+```typescript
+{
+  constantScore: {
+    filter: Query;
+    boost?: number;
+  }
+}
+```
+
+#### Disjunction Max Query
+
+Returns documents matching one or more queries, using the highest score.
+
+```typescript
+{
+  disMax: {
+    queries: Query[];
+    tieBreaker?: number;  // Multiplier for other matching queries
+  }
+}
+```
 
 ### Returns
 
@@ -188,6 +319,98 @@ interface SearchResultItem {
   score: number;
 }
 ```
+
+### Examples
+
+#### Match Query
+
+```typescript
+const results = await dynamosearch.query({
+  query: {
+    match: {
+      title: {
+        query: 'machine learning',
+        operator: 'AND',
+        boost: 2,
+      }
+    }
+  },
+  size: 10,
+  minScore: 1.0,
+});
+```
+
+#### Multi-Match Query
+
+```typescript
+const results = await dynamosearch.query({
+  query: {
+    multiMatch: {
+      query: 'machine learning',
+      fields: ['title^3', 'abstract^2', 'body'],
+      type: 'best_fields',
+    }
+  }
+});
+```
+
+#### Boolean Query
+
+```typescript
+const results = await dynamosearch.query({
+  query: {
+    bool: {
+      must: [
+        { match: { category: 'technology' } }
+      ],
+      should: [
+        { match: { title: 'AI' } },
+        { match: { title: 'machine learning' } }
+      ],
+      mustNot: [
+        { match: { status: 'archived' } }
+      ],
+      minimumShouldMatch: 1,
+    }
+  }
+});
+```
+
+#### Simple Query String
+
+```typescript
+const results = await dynamosearch.query({
+  query: {
+    simpleQueryString: {
+      query: '+machine learning -"deep learning"',
+      fields: ['title', 'body'],
+      defaultOperator: 'OR',
+    }
+  }
+});
+```
+
+## search()
+
+```typescript
+async search(query: string, options?: SearchOptions): Promise<SearchResult>
+```
+
+Simplified search method that uses Simple Query String syntax internally. This is a convenience wrapper around `query()`.
+
+### Parameters
+
+- **query** (`string`) - Search query text
+- **options** (optional)
+  - **fields** (`string[]`) - Fields to search with optional boost (e.g., `'title^2'`)
+  - **defaultOperator** (`'OR' | 'AND'`, optional) - Query operator (default: `'OR'`)
+    - `'OR'`: Documents match if they contain any of the query terms
+    - `'AND'`: Documents match only if they contain all query terms
+  - **minimumShouldMatch** (`number`, optional) - Minimum number of query terms that must match (only applies when `defaultOperator` is `'OR'`)
+  - **maxItems** (`number`) - Maximum results to return (default: `10`)
+  - **minScore** (`number`) - Minimum relevance score (default: `0`)
+
+Same as `query()` method.
 
 ### Examples
 
@@ -220,23 +443,12 @@ const results = await dynamosearch.search('machine learning', {
 });
 ```
 
-#### With Custom BM25 Parameters
-
-```typescript
-const results = await dynamosearch.search('machine learning', {
-  bm25: {
-    k1: 1.5,  // Higher k1: more weight to term frequency
-    b: 0.9,   // Higher b: stronger length normalization
-  },
-});
-```
-
 #### With AND Operator
 
 ```typescript
 // Only return documents containing ALL query terms
 const results = await dynamosearch.search('machine learning algorithms', {
-  operator: 'AND',
+  defaultOperator: 'AND',
 });
 ```
 
@@ -245,16 +457,9 @@ const results = await dynamosearch.search('machine learning algorithms', {
 ```typescript
 // Return documents containing at least 2 of the 3 query terms
 const results = await dynamosearch.search('machine learning algorithms', {
-  operator: 'OR',
+  defaultOperator: 'OR',
   minimumShouldMatch: 2,
 });
-```
-
-#### Check Consumed Capacity
-
-```typescript
-const results = await dynamosearch.search('query');
-console.log('Consumed capacity:', results.consumedCapacity.capacityUnits);
 ```
 
 ### Performance Notes
@@ -447,45 +652,3 @@ static ATTR_META_TOKEN_COUNT: string = 'tc'
 ```
 
 Metadata attribute prefix for token counts. Full attribute names follow pattern `tc:{shortName}`.
-
-## Instance Properties
-
-### client
-
-```typescript
-client: DynamoDBClient
-```
-
-AWS SDK DynamoDB client instance.
-
-### indexTableName
-
-```typescript
-indexTableName: string
-```
-
-Name of the search index table.
-
-### fields
-
-```typescript
-fields: Field[]
-```
-
-Array of searchable fields configuration.
-
-### partitionKeyName
-
-```typescript
-partitionKeyName: string
-```
-
-Name of the partition key from source table.
-
-### sortKeyName
-
-```typescript
-sortKeyName?: string
-```
-
-Name of the sort key from source table (if exists).
