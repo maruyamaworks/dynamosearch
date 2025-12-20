@@ -385,7 +385,25 @@ function peg$parse(input, options) {
     let s0, s1, s2, s3, s4, s5, s6, s7;
 
     s0 = peg$currPos;
-    s1 = peg$parseNotExpression();
+    s1 = peg$currPos;
+    s2 = input.charAt(peg$currPos);
+    if (peg$r0.test(s2)) {
+      peg$currPos++;
+    } else {
+      s2 = peg$FAILED;
+      if (peg$silentFails === 0) { peg$fail(peg$e0); }
+    }
+    if (s2 === peg$FAILED) {
+      s2 = null;
+    }
+    s3 = peg$parse_();
+    s4 = peg$parseNotExpression();
+    if (s4 !== peg$FAILED) {
+      s1 = [ s2, s4 ];
+    } else {
+      peg$currPos = s1;
+      s1 = peg$FAILED;
+    }
     if (s1 !== peg$FAILED) {
       s2 = [];
       s3 = peg$currPos;
@@ -783,28 +801,28 @@ function peg$parse(input, options) {
 
 
   /**
-   * @param {["" | "-", import("../index.js").Query]} head
+   * @param {["" | "+" | "|", ["" | "-", import("../index.js").Query]]} head
    * @param {["" | "+" | "|", ["" | "-", import("../index.js").Query]][]} tail
    * @returns {import("../index.js").Query}
    */
   function createBooleanQuery(head, tail) {
     if (tail.length === 0) {
-      return { bool: { must: [head[1]] } };
+      return { bool: { must: [head[1][1]] } };
     }
     /** @type {import("../index.js").BooleanQuery} */
     const bool = { minimumShouldMatch: options.minimumShouldMatch };
     const defaultClause = options.defaultOperator === 'AND' ? 'must' : 'should';
     /** @type {keyof typeof bool} */
     let clause = defaultClause;
-    if (head[0] === '-') {
+    if (head[1][0] === '-') {
       clause = 'mustNot';
-    } else if (tail[0][0] === '+') {
+    } else if (head[0] === '+' || (!head[0] && tail[0][0] === '+')) {
       clause = 'must';
-    } else if (tail[0][0] === '|') {
+    } else if (head[0] === '|' || (!head[0] && tail[0][0] === '|')) {
       clause = 'should';
     }
     bool[clause] ||= [];
-    bool[clause]?.push(head[1]);
+    bool[clause]?.push(head[1][1]);
     for (let i = 0; i < tail.length; i++) {
       /** @type {keyof typeof bool} */
       let clause = defaultClause;

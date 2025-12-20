@@ -1,27 +1,27 @@
 {
   /**
-   * @param {["" | "-", import("../index.js").Query]} head
+   * @param {["" | "+" | "|", ["" | "-", import("../index.js").Query]]} head
    * @param {["" | "+" | "|", ["" | "-", import("../index.js").Query]][]} tail
    * @returns {import("../index.js").Query}
    */
   function createBooleanQuery(head, tail) {
     if (tail.length === 0) {
-      return { bool: { must: [head[1]] } };
+      return { bool: { must: [head[1][1]] } };
     }
     /** @type {import("../index.js").BooleanQuery} */
     const bool = { minimumShouldMatch: options.minimumShouldMatch };
     const defaultClause = options.defaultOperator === 'AND' ? 'must' : 'should';
     /** @type {keyof typeof bool} */
     let clause = defaultClause;
-    if (head[0] === '-') {
+    if (head[1][0] === '-') {
       clause = 'mustNot';
-    } else if (tail[0][0] === '+') {
+    } else if (head[0] === '+' || (!head[0] && tail[0][0] === '+')) {
       clause = 'must';
-    } else if (tail[0][0] === '|') {
+    } else if (head[0] === '|' || (!head[0] && tail[0][0] === '|')) {
       clause = 'should';
     }
     bool[clause] ||= [];
-    bool[clause]?.push(head[1]);
+    bool[clause]?.push(head[1][1]);
     for (let i = 0; i < tail.length; i++) {
       /** @type {keyof typeof bool} */
       let clause = defaultClause;
@@ -91,7 +91,7 @@ start
   = _ @BoolExpression _
 
 BoolExpression
-  = head:NotExpression tail:(_ @[+|]? _ @NotExpression)* { return createBooleanQuery(head, tail); }
+  = head:(@[+|]? _ @NotExpression) tail:(_ @[+|]? _ @NotExpression)* { return createBooleanQuery(head, tail); }
 
 NotExpression
   = "-"? PrimaryExpression
