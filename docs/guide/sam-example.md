@@ -14,9 +14,9 @@ The example in `examples/serverless-api` demonstrates a complete serverless sear
 
 ## Prerequisites
 
-- [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) installed
 - [Node.js 20+](https://nodejs.org/) installed
-- AWS credentials configured (`aws configure`)
+- [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) installed
+- AWS credentials configured
 
 ## Quick Start
 
@@ -111,20 +111,18 @@ Response:
 sequenceDiagram
     participant Client
     participant AddAPI as AddDocument API
+    participant SearchAPI as Search API
     participant DB as DocumentsTable
-    participant Stream as DynamoDB Streams
     participant Indexer as IndexerFunction
     participant Index as SearchIndexTable
-    participant SearchAPI as Search API
 
     Client->>AddAPI: POST /documents
     AddAPI->>DB: PutItem
-    DB->>Stream: Stream Event
-    Stream->>Indexer: Trigger Lambda
+    DB->>Indexer: DynamoDB Stream Event
     Indexer->>Index: Update Index
 
     Client->>SearchAPI: GET /search?q=...
-    SearchAPI->>Index: Query
+    SearchAPI->>Index: Query Index
     Index-->>SearchAPI: Results
     SearchAPI-->>Client: Ranked Results
 ```

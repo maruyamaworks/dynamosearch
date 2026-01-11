@@ -96,7 +96,7 @@ export default withMermaid({
             {
               text: 'Tokenizers',
               link: '/reference/tokenizers/',
-              collapsed: true,
+              collapsed: false,
               items: [
                 { text: 'Tokenizer', link: '/reference/tokenizers/tokenizer' },
                 { text: 'StandardTokenizer', link: '/reference/tokenizers/standard-tokenizer' },
@@ -116,7 +116,7 @@ export default withMermaid({
             {
               text: 'Character Filters',
               link: '/reference/char-filters/',
-              collapsed: true,
+              collapsed: false,
               items: [
                 { text: 'CharacterFilter', link: '/reference/char-filters/character-filter' },
                 { text: 'ICUNormalizer', link: '/reference/char-filters/icu-normalizer' },
@@ -125,7 +125,7 @@ export default withMermaid({
             {
               text: 'Token Filters',
               link: '/reference/filters/',
-              collapsed: true,
+              collapsed: false,
               items: [
                 { text: 'TokenFilter', link: '/reference/filters/token-filter' },
                 { text: 'LowerCaseFilter', link: '/reference/filters/lowercase-filter' },
@@ -164,7 +164,7 @@ export default withMermaid({
             {
               text: 'Analyzers',
               link: '/reference/plugins/analysis-kuromoji/analyzers/',
-              collapsed: true,
+              collapsed: false,
               items: [
                 { text: 'KuromojiAnalyzer', link: '/reference/plugins/analysis-kuromoji/analyzers/kuromoji-analyzer' },
               ],
@@ -172,7 +172,7 @@ export default withMermaid({
             {
               text: 'Tokenizers',
               link: '/reference/plugins/analysis-kuromoji/tokenizers/',
-              collapsed: true,
+              collapsed: false,
               items: [
                 { text: 'KuromojiTokenizer', link: '/reference/plugins/analysis-kuromoji/tokenizers/kuromoji-tokenizer' },
               ],
@@ -180,7 +180,7 @@ export default withMermaid({
             {
               text: 'Token Filters',
               link: '/reference/plugins/analysis-kuromoji/filters/',
-              collapsed: true,
+              collapsed: false,
               items: [
                 { text: 'KuromojiBaseFormFilter', link: '/reference/plugins/analysis-kuromoji/filters/kuromoji-base-form-filter' },
                 { text: 'KuromojiPartOfSpeechStopFilter', link: '/reference/plugins/analysis-kuromoji/filters/kuromoji-part-of-speech-stop-filter' },
@@ -201,7 +201,7 @@ export default withMermaid({
     },
     footer: {
       message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2025 Kenichi Maruyama',
+      copyright: `Copyright © ${new Date().getFullYear()} Kenichi Maruyama`,
     },
   },
 });

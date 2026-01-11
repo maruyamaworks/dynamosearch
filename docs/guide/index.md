@@ -5,7 +5,8 @@ This guide will help you install and configure DynamoSearch for your project.
 ## Requirements
 
 - [Node.js 20+](https://nodejs.org/) installed
-- AWS credentials configured (`aws configure`)
+- AWS SDK for JavaScript v3 `@aws-sdk/client-dynamodb` installed
+- AWS credentials configured
 
 ## Installation
 
@@ -14,15 +15,15 @@ Install DynamoSearch using npm, yarn, or pnpm:
 ::: code-group
 
 ```bash [npm]
-npm install dynamosearch @aws-sdk/client-dynamodb
+npm install dynamosearch
 ```
 
 ```bash [yarn]
-yarn add dynamosearch @aws-sdk/client-dynamodb
+yarn add dynamosearch
 ```
 
 ```bash [pnpm]
-pnpm add dynamosearch @aws-sdk/client-dynamodb
+pnpm add dynamosearch
 ```
 
 :::

@@ -41,7 +41,7 @@ sequenceDiagram
     Client->>Client: Calculate Scores
     Client-->>App: Ranked Results (Keys + Scores)
 
-    opt Retrieve Original Data
+    opt Retrieve Complete Data
         App->>DB: BatchGetItem (using keys)
         DB-->>App: Complete Document Data
     end
@@ -52,4 +52,10 @@ sequenceDiagram
 3. **Token Lookup**: The client queries the index table for documents containing the analyzed tokens
 4. **Ranking**: Matching documents are scored using the BM25 algorithm, which considers term frequency, inverse document frequency, and document length normalization
 5. **Results**: Ranked results are returned to your application with document keys and relevance scores
-6. **Retrieve Original Data (Optional)**: Since DynamoSearch returns only keys and scores, your application can fetch complete document data from the source table
+6. **Retrieve Complete Data (Optional)**: Since DynamoSearch returns only keys and scores, your application can fetch complete document data from the source table
+
+<style scoped>
+.mermaid {
+  margin: 32px 0;
+}
+</style>
