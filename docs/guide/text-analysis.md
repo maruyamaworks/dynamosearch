@@ -8,12 +8,14 @@ The analysis process flows through three stages:
 
 ```mermaid
 graph LR
-    A[Raw Text] --> B[Character<br>Filters]
+    A([Text]) --> B@{ shape: processes, label: "Character
+    Filters" }
     subgraph Analyzer
-        B --> C[Tokenizer]
-        C --> D[Token<br>Filters]
+        B --> C@{ share: rect, label: "Tokenizer" }
+        C --> D@{ shape: processes, label: "Token
+        Filters" }
     end
-    D --> E[Tokens]
+    D --> E([Tokens])
 ```
 
 ### Analyzer

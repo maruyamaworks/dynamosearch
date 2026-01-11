@@ -37,7 +37,7 @@ export default withMermaid({
         {
           text: 'Introduction',
           items: [
-            { text: 'Why DynamoSearch', link: '/guide/why' },
+            { text: 'How It Works', link: '/guide/how-it-works' },
             {
               text: 'Getting Started',
               link: '/guide/',
@@ -46,6 +46,7 @@ export default withMermaid({
                 { text: 'Adding to Existing Tables', link: '/guide/existing-tables' },
               ],
             },
+            { text: 'Why DynamoSearch', link: '/guide/why' },
           ],
         },
         {
