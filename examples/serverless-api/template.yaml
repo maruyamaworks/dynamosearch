@@ -73,7 +73,6 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2020
-        Sourcemap: true
         EntryPoints:
           - src/indexer.ts
         External:
@@ -105,7 +104,6 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2020
-        Sourcemap: true
         EntryPoints:
           - src/search.ts
         External:
@@ -132,7 +130,6 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2020
-        Sourcemap: true
         EntryPoints:
           - src/add-document.ts
         External:

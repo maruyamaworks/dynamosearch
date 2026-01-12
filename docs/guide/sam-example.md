@@ -23,7 +23,8 @@ The example in `examples/serverless-api` demonstrates a complete serverless sear
 ### 1. Clone and Navigate to the Example
 
 ```bash
-cd examples/serverless-api
+git clone https://github.com/maruyamaworks/dynamosearch
+cd dynamosearch/examples/serverless-api
 ```
 
 ### 2. Install Dependencies
@@ -107,6 +108,8 @@ Response:
 
 ## Architecture
 
+### Indexing Flow
+
 ```mermaid
 sequenceDiagram
     participant Client
@@ -120,6 +123,18 @@ sequenceDiagram
     AddAPI->>DB: PutItem
     DB->>Indexer: DynamoDB Stream Event
     Indexer->>Index: Update Index
+```
+
+### Search Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AddAPI as AddDocument API
+    participant SearchAPI as Search API
+    participant DB as DocumentsTable
+    participant Indexer as IndexerFunction
+    participant Index as SearchIndexTable
 
     Client->>SearchAPI: GET /search?q=...
     SearchAPI->>Index: Query Index
@@ -230,3 +245,9 @@ Confirm the deletion when prompted. This removes:
 - API Gateway
 - CloudWatch log groups
 - IAM roles
+
+<style scoped>
+.mermaid {
+  margin: 32px 0;
+}
+</style>
