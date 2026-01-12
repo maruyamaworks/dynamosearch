@@ -1,6 +1,10 @@
 {
   "name": "@dynamosearch/plugin-analysis-kuromoji",
-  "version": "0.6.2",
+  "version": "1.0.0",
+  "description": "Japanese text analysis plugin for DynamoSearch",
+  "keywords": ["dynamodb", "search", "serverless", "elasticsearch", "opensearch"],
+  "homepage": "https://maruyamaworks.github.io/dynamosearch/",
+  "bugs": "https://github.com/maruyamaworks/dynamosearch/issues",
   "license": "MIT",
   "author": "Kenichi Maruyama <11133876+maruyamaworks@users.noreply.github.com>",
   "main": "dist/index.js",
@@ -32,5 +36,8 @@
   },
   "peerDependencies": {
     "dynamosearch": "workspace:^"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

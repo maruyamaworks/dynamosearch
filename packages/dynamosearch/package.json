@@ -1,6 +1,10 @@
 {
   "name": "dynamosearch",
-  "version": "0.6.2",
+  "version": "1.0.0",
+  "description": "Elasticsearch-inspired search, built for DynamoDB",
+  "keywords": ["dynamodb", "search", "serverless", "elasticsearch", "opensearch"],
+  "homepage": "https://maruyamaworks.github.io/dynamosearch/",
+  "bugs": "https://github.com/maruyamaworks/dynamosearch/issues",
   "license": "MIT",
   "author": "Kenichi Maruyama <11133876+maruyamaworks@users.noreply.github.com>",
   "main": "dist/index.js",
@@ -30,5 +34,8 @@
   },
   "peerDependencies": {
     "@aws-sdk/client-dynamodb": "^3.929.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
